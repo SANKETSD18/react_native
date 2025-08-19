@@ -1,50 +1,61 @@
-# Welcome to your Expo app 👋
+# 📰 News App (Expo + React Native)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+यह एक demo **News App** है जिसे `expo-router` का इस्तेमाल करके बनाया गया है।  
+इसमें user login कर सकता है या फिर **Guest Mode** में बिना login के app use कर सकता है।  
+Login के बाद user को उसका नाम या email के साथ personalized greeting दिखेगा।  
 
-## Get started
+---
 
-1. Install dependencies
+## ✨ Features
+- 🔐 **Login & Guest Login** option  
+- 👋 Personalized greeting (`Good Morning, {User}`)  
+- 📰 **News Feed** with horizontal scroll cards  
+- 🧭 **Custom Tab Navigation** (rounded modern UI with icons)  
+- ⚡ Built with **Expo Router** for smooth navigation  
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## 📂 Project Structure
+project-root/
+│── app/
+│ ├── (tabs)/
+│ │ ├── home.tsx
+│ │ ├── about.tsx
+│ │ ├── profile.tsx
+│ │ ├── news.tsx
+│ │ └── _layout.tsx
+│ ├── login.tsx
+│ └── _layout.tsx
+│── assets/
+│── package.json
+│── README.md 
+## 🚀 Installation & Setup
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+1. Clone repo:
 ```bash
-npm run reset-project
-```
+git clone https://github.com/SANKETSD18/react_native.git
+cd REACT_NATIVE
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2.Dependencies install करो:
 
-## Learn more
+npm install
 
-To learn more about developing your project with Expo, look at the following resources:
+3.Expo start करो:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+npx expo start
 
-## Join the community
 
-Join our community of developers creating universal apps.
+🔑 Login Flow
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+अगर user email + password डालता है → उसे News Page पर ले जाया जाएगा।
+
+अगर user Continue without Login दबाता है → सीधे Guest Mode News Feed खुल जाएगा।
+
+
+🛠 Tech Stack
+
+React Native
+
+Expo
+
+Expo Router
