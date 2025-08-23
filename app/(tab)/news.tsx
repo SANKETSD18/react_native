@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     width: 200,
     padding: 10,
-    elevation: 3,
+     boxShadow: "0px 3px 6px rgba(0,0,0,0.16)",
   },
   cardImage: {
     width: "100%",

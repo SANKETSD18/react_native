@@ -3,41 +3,38 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function TabLayout() {
   return (
-   <Tabs
+    <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          position: "absolute",
-          bottom: 20,
-          left: 20,
-          right: 20,
-          backgroundColor: "#000",
+          backgroundColor: "#1E325D",
           borderRadius: 30,
           height: 70,
-          paddingHorizontal: 10,
+          paddingTop: 10,
+          boxShadow: "none",
         },
       }}
     >
-     <Tabs.Screen
-        name="home"
+      <Tabs.Screen
+        name="index"
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons
               name={focused ? "home" : "home-outline"}
               size={28}
-              color={focused ? "#fff" : "#888"}
+              color={focused ? "#ffd900" : "#ffd900"}
             />
           ),
         }}
       />
-      <Tabs.Screen name="about"
+      <Tabs.Screen name="news"
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={focused ? "information-circle" : "information-circle-outline"}
+              name={focused ? "newspaper" : "newspaper-outline"}
               size={28}
-              color={focused ? "#fff" : "#888"}
+              color={focused ? "#FFEB3B" : "#888"}
             />
           ),
         }} />
@@ -47,27 +44,29 @@ export default function TabLayout() {
             <Ionicons
               name={focused ? "person" : "person-outline"}
               size={28}
-              color={focused ? "#fff" : "#888"}
+              color={focused ? "#FFEB3B" : "#888"}
             />
           ),
         }} />
-      <Tabs.Screen name="settings"
+      {/* <Tabs.Screen name="settings"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <Ionicons
+              name={focused ? "newspaper" : "newspaper-outline"}
+
+
+              size={28}
+              color={focused ? "#FFEB3B" : "#888"}
+            />
+          ),
+        }} /> */}
+      <Tabs.Screen name="upload"
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons
               name={focused ? "settings" : "settings-outline"}
               size={28}
-              color={focused ? "#fff" : "#888"}
-            />
-          ),
-        }} />
-      <Tabs.Screen name="news"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "newspaper" : "newspaper-outline"}
-              size={28}
-              color={focused ? "#fff" : "#888"}
+              color={focused ? "#FFEB3B" : "#ffffffff"}
             />
           ),
         }} />
