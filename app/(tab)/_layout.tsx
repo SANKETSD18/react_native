@@ -9,13 +9,20 @@ export default function TabLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: "#1E325D",
-          borderRadius: 30,
+          borderTopLeftRadius: 25,
+          borderTopRightRadius: 25,
           height: 70,
           paddingTop: 10,
-          boxShadow: "none",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.1,
+          shadowRadius: 3,
+          elevation: 5,
+          position: "absolute",
         },
       }}
     >
+      {/* Home Screen */}
       <Tabs.Screen
         name="index"
         options={{
@@ -23,12 +30,15 @@ export default function TabLayout() {
             <Ionicons
               name={focused ? "home" : "home-outline"}
               size={28}
-              color={focused ? "#ffd900" : "#ffd900"}
+              color={focused ? "#ffd900" : "#888"}
             />
           ),
         }}
       />
-      <Tabs.Screen name="news"
+
+      {/* News Screen */}
+      <Tabs.Screen
+        name="news"
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons
@@ -37,39 +47,36 @@ export default function TabLayout() {
               color={focused ? "#FFEB3B" : "#888"}
             />
           ),
-        }} />
-      <Tabs.Screen name="profile"
+        }}
+      />
+
+      {/* PDF Screen */}
+      <Tabs.Screen
+        name="pdf"
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={focused ? "person" : "person-outline"}
+              name={focused ? "document-text" : "document-text-outline"}
               size={28}
               color={focused ? "#FFEB3B" : "#888"}
             />
           ),
-        }} />
-      {/* <Tabs.Screen name="settings"
+        }}
+      />
+
+      {/* Upload Screen */}
+      <Tabs.Screen
+        name="upload"
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={focused ? "newspaper" : "newspaper-outline"}
-
-
+              name={focused ? "cloud-upload" : "cloud-upload-outline"}
               size={28}
               color={focused ? "#FFEB3B" : "#888"}
             />
           ),
-        }} /> */}
-      <Tabs.Screen name="upload"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "settings" : "settings-outline"}
-              size={28}
-              color={focused ? "#FFEB3B" : "#ffffffff"}
-            />
-          ),
-        }} />
+        }}
+      />
     </Tabs>
   );
 }

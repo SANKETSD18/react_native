@@ -1,81 +1,68 @@
 import React, { useState } from "react";
 import { View, Text, Button, ActivityIndicator, Linking, Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "@/supabaseClient";
 
-export default function UploadPdf() {
+export default function upload() {
   const [loading, setLoading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; url: string } | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
 
   const pickAndUploadPdf = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "application/pdf",
+        copyToCacheDirectory: true,
+        multiple: false,
       });
 
-      if (result.canceled) {
-        return;
-      }
+      if (result.canceled) return;
 
-      const file = result.assets[0];
-      console.log("Selected File:", file);
-
+      const asset = result.assets[0];
       setLoading(true);
 
-      const fileName = `${Date.now()}_${file.name}`;
-      let fileData: Blob | Uint8Array;
+      const fileName = `${Date.now()}_${asset.name ?? "document.pdf"}`;
 
-      if (Platform.OS === "web") {
-        // Web: base64 को Uint8Array में बदलो
-        const base64 = file.uri.split(",")[1];
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        fileData = bytes;
+      let fileData: Blob;
+      if (Platform.OS === "web" && (asset as any).file) {
+        fileData = (asset as any).file as File;
       } else {
-        // Native: fetch करके blob लो
-        const response = await fetch(file.uri);
+        const response = await fetch(asset.uri);
         fileData = await response.blob();
       }
 
-      // Upload to Supabase
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("epaper-pdf")
         .upload(fileName, fileData, {
-          contentType: "application/pdf",
+          contentType: asset.mimeType ?? "application/pdf",
           upsert: true,
         });
 
-      if (error) {
-        setLoading(false);
-        console.error("Upload Error:", error.message);
-        return;
-      }
+      if (uploadError) throw new Error(uploadError.message ?? "Upload failed");
 
-      // Public URL nikalna
-      const { data: urlData } = supabase.storage
-        .from("epaper-pdf")
-        .getPublicUrl(fileName);
-
+      const { data: urlData } = supabase.storage.from("epaper-pdf").getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
 
-      // DB me insert
+      // Insert with date
       const { error: dbError } = await supabase
         .from("epapers")
-        .insert([{ title: file.name, pdf_url: publicUrl }]);
+        .insert([
+          {
+            title: asset.name ?? fileName,
+            pdf_url: publicUrl,
+            date: selectedDate.toISOString().split("T")[0], // YYYY-MM-DD
+          },
+        ]);
 
-      setLoading(false);
+      if (dbError) console.log("DB Insert Error:", dbError);
 
-      if (dbError) {
-        console.error("DB Error:", dbError.message);
-      } else {
-        setUploadedFile({ name: file.name, url: publicUrl }); // ✅ state update
-      }
+      setUploadedFile({ name: asset.name ?? fileName, url: publicUrl });
     } catch (err: any) {
+      alert(err?.message ?? "Something went wrong");
+    } finally {
       setLoading(false);
-      console.error("Upload Error:", err);
     }
   };
 
@@ -83,13 +70,29 @@ export default function UploadPdf() {
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
       <Text style={{ fontSize: 20, marginBottom: 20 }}>📄 Upload PDF</Text>
 
+      <Button title="Pick Date" onPress={() => setShowPicker(true)} />
+      <Text style={{ marginVertical: 10 }}>
+        Selected Date: {selectedDate.toISOString().split("T")[0]}
+      </Text>
+
+      {showPicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={(event, date) => {
+            if (date) setSelectedDate(date);
+            setShowPicker(false);
+          }}
+        />
+      )}
+
       {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" />
       ) : (
         <Button title="Choose & Upload PDF" onPress={pickAndUploadPdf} />
       )}
 
-      {/* ✅ Upload hone ke baad info show karo */}
       {uploadedFile && (
         <View style={{ marginTop: 30, alignItems: "center" }}>
           <Text style={{ fontSize: 16, marginBottom: 10 }}>
