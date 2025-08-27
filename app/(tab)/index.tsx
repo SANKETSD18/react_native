@@ -1,9 +1,9 @@
 
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, SafeAreaView } from "react-native";
 
-export default function LoginScreen({ navigation }: { navigation: any }) {
+export default function index({ navigation }: { navigation: any }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -29,9 +29,9 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Login</Text>
-
+      
       <TextInput
         style={styles.input}
         placeholder="Enter Email"
@@ -56,7 +56,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       <TouchableOpacity style={styles.guestButton} onPress={handleGuestLogin}>
         <Text style={styles.guestButtonText}>Continue without Login</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

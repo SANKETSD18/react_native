@@ -52,7 +52,7 @@ export default function TabLayout() {
 
       {/* PDF Screen */}
       <Tabs.Screen
-        name="pdf"
+        name="paper"
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons

@@ -7,6 +7,8 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
+  StatusBar,
+  Platform
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 
@@ -50,7 +52,7 @@ const News = ({ route }: { route: any }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+  <SafeAreaView style={styles.container}>
       {/* Top Greeting Section */}
       <View style={styles.header}>
          <Text style={styles.greeting}>Good Morning {user || "Guest"},</Text>
@@ -72,9 +74,10 @@ const News = ({ route }: { route: any }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+ container: {
     flex: 1,
     backgroundColor: "#fff",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0, // 👈 Fix
   },
   header: {
     backgroundColor: "#C62828",
