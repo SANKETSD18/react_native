@@ -17,12 +17,15 @@ import * as DocumentPicker from "expo-document-picker";
 import { supabase } from "@/supabaseClient";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system";
+
 
 const BUCKET = "epaper-pdf";
 
 export default function PdfUploader() {
   // pdfList state
+  const navigation = useNavigation();
   const [pdfList, setPdfList] = useState<{ name: string; url: string; path: string }[]>([]);
 
   const [search, setSearch] = useState("");
@@ -157,10 +160,18 @@ export default function PdfUploader() {
 
 
   // Open PDF in browser / viewer
-  const openPDF = (url: string) => {
-    Linking.openURL(url).catch(() => {
-      Alert.alert("Error", "Unable to open PDF.");
-    });
+  const openPDF = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url); // OS native PDF viewer open होगा
+      } else {
+        Alert.alert("Error", "Cannot open PDF file");
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Failed to open PDF");
+    }
   };
 
   useEffect(() => {
@@ -173,11 +184,11 @@ export default function PdfUploader() {
 
   return (
     <SafeAreaView style={{
-    flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0, // 👈 Android fix
-    backgroundColor: "#fff", // ताकि white रहे
-    paddingHorizontal: 20,
-  }}>
+      flex: 1,
+      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0, // 👈 Android fix
+      backgroundColor: "#fff", // ताकि white रहे
+      paddingHorizontal: 20,
+    }}>
       {/* City Picker */}
       <Text>Select City:</Text>
       <Picker
