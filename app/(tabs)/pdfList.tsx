@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { SafeAreaView, FlatList, TouchableOpacity, Text, ActivityIndicator, View } from "react-native";
-import PdfPreview from "./pdfPreview"; // PdfPreview.tsx ka path check karo
+import { useEffect, useState } from "react";
+import { SafeAreaView, FlatList, TouchableOpacity, Text, ActivityIndicator, View, Platform, StatusBar } from "react-native";
+import PdfPreview from "../components/pdfPreview";  // spelling fix: components
 import { supabase } from "@/supabaseClient";
 
 export default function PdfListScreen() {
@@ -25,11 +25,21 @@ export default function PdfListScreen() {
           return;
         }
 
-        const filesWithUrls = data.map((file) => ({
-          name: file.name,
-          url: `https://kenepxfwouuyhzpahsqk.supabase.co/storage/v1/object/public/epaper-pdf/${file.name}`,
-        }));
+        const filesWithUrls = await Promise.all(
+          data.map(async (file) => {
+            const result = await supabase
+              .storage
+              .from("epaper-pdf")
+              .createSignedUrl(file.name, 60);
 
+            if (result.error) {
+              console.log("Signed URL error:", result.error.message);
+              return { name: file.name, url: "" };
+            }
+
+            return { name: file.name, url: result.data.signedUrl };
+          })
+        );
         setPdfFiles(filesWithUrls);
       } catch (err) {
         console.log("Unexpected error:", err);
@@ -50,17 +60,26 @@ export default function PdfListScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView
+      style={{
+        flex: 1,
+        paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+        backgroundColor: "white",
+      }}
+    >
       {selectedPdf ? (
-        <PdfPreview pdfUrl={selectedPdf} goBack={() => setSelectedPdf(null)} />
+        <View style={{ flex: 1 }}>
+          <PdfPreview pdfUrl={selectedPdf} goBack={() => setSelectedPdf(null)} />
+        </View>
       ) : (
         <FlatList
           data={pdfFiles}
           keyExtractor={(item) => item.name}
+          contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={{ padding: 20, borderBottomWidth: 1 }}
-              onPress={() => setSelectedPdf(item.url)}
+              style={{ padding: 20, borderBottomWidth: 1, borderColor: "#ccc" }}
+              onPress={() => setSelectedPdf(item.url)} // navigation ki jagah yahan state set karo
             >
               <Text style={{ color: "blue", fontSize: 16 }}>{item.name}</Text>
             </TouchableOpacity>
