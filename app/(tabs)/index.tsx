@@ -1,5 +1,4 @@
-import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,184 +6,195 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  FlatList,
+  View,
 } from "react-native";
 import { supabase } from "@/supabaseClient";
 
-export default function Index() {
-  const [name, setName] = useState("");
+type ErrorLike = { message?: string };
+
+export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
 
-  const handleRegister = async () => {
-    if (!name || !email || !password) {
-      Alert.alert("Error", "Please fill all fields");
-      return;
+  const [allUsers, setAllUsers] = useState<any[]>([]); // Admin ke liye users list
+
+  const formatErrorMessage = (err: unknown): string => {
+    let errorMessage = "An error occurred";
+    if (typeof err === "string") errorMessage = err;
+    else if (
+      typeof err === "object" &&
+      err !== null &&
+      "message" in err &&
+      typeof (err as ErrorLike).message === "string"
+    )
+      errorMessage = (err as ErrorLike).message!;
+    else {
+      try {
+        errorMessage = JSON.stringify(err);
+      } catch { }
     }
-    setLoading(true);
-    try {
-      console.log("Registering user:", { name, email });
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      if (authError) {
-        console.log("SignUp Error:", authError);
-        throw authError;
-      }
-      if (!authData.user) throw new Error("User not created");
-
-      console.log("User signed up:", authData.user);
-
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: authData.user.id,
-        name,
-        email,
-      });
-
-      if (profileError) {
-        console.log("Profile Insert Error:", profileError);
-        Alert.alert("Profile Insert Failed", profileError.message);
-        throw profileError;
-      }
-
-      console.log("Profile inserted successfully");
-
-      Alert.alert("Success", "Account created successfully! Please verify your email.");
-      setIsRegister(false);
-    } catch (err: any) {
-      console.log("Register Failed:", err.message);
-      Alert.alert("Register Failed", err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
+    return errorMessage;
   };
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
-      return;
+  // Login
+ const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert("Error", "Please enter email and password");
+    return;
+  }
+  setLoading(true);
+
+  try {
+    // Supabase sign in
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+
+    const user = data.user;
+
+    // Profile check or create
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile && profileError && profileError.code === 'PGRST116') {
+      // Profile not found, create profile with default role 'user'
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: user.id,
+        email: user.email,
+        role: "user",
+      });
+      if (insertError) throw insertError;
     }
-    setLoading(true);
-    try {
-      console.log("Logging in user:", email);
-      const { data: authData, error: authError } =
-        await supabase.auth.signInWithPassword({ email, password });
-      if (authError) {
-        console.log("Login Error:", authError);
-        throw authError;
-      }
-      console.log("User logged in:", authData.user);
 
-      if (!authData.user.email_confirmed_at) {
-        Alert.alert(
-          "Email not verified",
-          "Please verify your email by clicking the link sent to you."
-        );
-        return;
-      }
+    // Re-fetch profile to get role
+    const { data: refreshedProfile, error: refreshedError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role,name")
-        .eq("id", authData.user.id)
-        .single();
+    if (refreshedError) throw refreshedError;
 
-      if (profileError || !profile) {
-        console.log("Profile fetch error:", profileError);
-        throw new Error("Profile not found");
-      }
+    setUserRole(refreshedProfile.role || "user");
+    setUserName(email.split("@")[0]);
+    setIsLoggedIn(true);
+  } catch (err) {
+    Alert.alert("Login Failed", formatErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
 
-      console.log("Profile data:", profile);
 
-      setUserName(profile.name || email);
-      setIsLoggedIn(true);
-      console.log("Login successful, isLoggedIn:", true);
+  // Fetch all users (only admin)
+  const fetchAllUsers = async () => {
+    const { data, error } = await supabase.from("profiles").select("id,email,role");
+    if (error) Alert.alert("Error", "Failed to fetch users");
+    else setAllUsers(data || []);
+  };
 
-      if (profile.role === "admin") {
-        router.push({ pathname: "/upload", params: { user: email } });
-      } else {
-        router.push({ pathname: "/pdfList", params: { user: email } });
-      }
-    } catch (err: any) {
-      console.log("Login Failed:", err.message);
-      Alert.alert("Login Failed", err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+  // Update user role (admin feature)
+  const updateUserRole = async (userId: string, newRole: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role: newRole })
+      .eq("id", userId);
+
+    if (error) Alert.alert("Error", error.message);
+    else {
+      Alert.alert("Success", `User role updated to ${newRole}`);
+      fetchAllUsers(); // Refresh list
     }
   };
 
   const handleLogout = async () => {
-    console.log("Logout pressed");
     await supabase.auth.signOut();
     setIsLoggedIn(false);
     setUserName("");
+    setUserRole("");
     setEmail("");
     setPassword("");
-    setIsRegister(false);
-    router.replace("/");
+    setAllUsers([]);
   };
+
+  if (!isLoggedIn) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Login</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>{loading ? "Please wait..." : "Login"}</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {isLoggedIn ? (
+      <Text style={styles.welcomeText}>
+        Welcome, {userName}
+      </Text>
+      <Text style={styles.welcomeText}>Role: {userRole}</Text>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.buttonText}>Logout</Text>
+      </TouchableOpacity>
+
+      {/* Admin Panel */}
+      {userRole === "admin" && (
         <>
-          <Text style={styles.title}>Welcome, {userName}</Text>
-          <TouchableOpacity style={styles.button} onPress={handleLogout}>
-            <Text style={styles.buttonText}>Logout</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <Text style={styles.title}>{isRegister ? "Register" : "Login"}</Text>
-
-          {isRegister && (
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Name"
-              value={name}
-              onChangeText={setName}
-            />
-          )}
-
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
+          <Text style={styles.sectionTitle}>Admin Panel - Manage User Roles</Text>
+          <FlatList
+            data={allUsers}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.userRow}>
+                <Text>{item.email}</Text>
+                <Text style={styles.roleText}>{item.role}</Text>
+                {item.role !== "admin" ? (
+                  <TouchableOpacity
+                    style={styles.makeAdminBtn}
+                    onPress={() => updateUserRole(item.id, "admin")}
+                  >
+                    <Text style={styles.buttonTextSmall}>Make Admin</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.removeAdminBtn}
+                    onPress={() => updateUserRole(item.id, "user")}
+                  >
+                    <Text style={styles.buttonTextSmall}>Remove Admin</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={isRegister ? handleRegister : handleLogin}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? "Please wait..." : isRegister ? "Register" : "Login"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setIsRegister(!isRegister)}>
-            <Text style={styles.toggleText}>
-              {isRegister
-                ? "Already have an account? Login"
-                : "Don't have an account? Register"}
-            </Text>
-          </TouchableOpacity>
         </>
       )}
     </SafeAreaView>
@@ -192,18 +202,53 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20, backgroundColor: "#f5f5f5" },
-  title: { fontSize: 26, fontWeight: "bold", textAlign: "center", marginBottom: 30 },
+  container: { flex: 1, padding: 20, backgroundColor: "#f5f5f5" },
+  title: { fontSize: 28, fontWeight: "700", marginBottom: 20, textAlign: "center" },
   input: {
     height: 50,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 15,
-    paddingHorizontal: 10,
     backgroundColor: "#fff",
+    marginBottom: 15,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    paddingHorizontal: 10,
   },
-  button: { backgroundColor: "#007bff", padding: 15, borderRadius: 8, marginBottom: 15 },
-  buttonText: { color: "#fff", textAlign: "center", fontSize: 18 },
-  toggleText: { marginTop: 15, textAlign: "center", color: "#007bff" },
+  button: {
+    backgroundColor: "#007bff",
+    padding: 15,
+    borderRadius: 7,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  buttonText: { color: "#fff", fontWeight: "600", fontSize: 18 },
+  welcomeText: { fontSize: 22, marginBottom: 10, textAlign: "center" },
+  logoutButton: {
+    backgroundColor: "#dc3545",
+    padding: 15,
+    borderRadius: 7,
+    marginBottom: 30,
+    alignItems: "center",
+  },
+  sectionTitle: { fontSize: 20, fontWeight: "700", marginBottom: 15, marginTop: 10 },
+  userRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: "#ccc",
+  },
+  roleText: { fontWeight: "bold" },
+  makeAdminBtn: {
+    backgroundColor: "#28a745",
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    justifyContent: "center",
+  },
+  removeAdminBtn: {
+    backgroundColor: "#6c757d",
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    justifyContent: "center",
+  },
+  buttonTextSmall: { color: "#fff", fontWeight: "600", fontSize: 14 },
 });
