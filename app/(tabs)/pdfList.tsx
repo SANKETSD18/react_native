@@ -1,7 +1,7 @@
+import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useState } from "react";
-import { SafeAreaView, FlatList, TouchableOpacity, Text, ActivityIndicator, View, Platform, StatusBar } from "react-native";
-import PdfPreview from "../components/pdfPreview";  // spelling fix: components
-import { supabase } from "@/supabaseClient";
+import { ActivityIndicator, FlatList, Platform, SafeAreaView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import PdfPreview from "../components/pdfPreview"; // spelling fix: components
 
 export default function PdfListScreen() {
   const [pdfFiles, setPdfFiles] = useState<{ name: string; url: string }[]>([]);

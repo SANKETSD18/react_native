@@ -74,6 +74,7 @@ export default function TabLayout() {
               name={focused ? "cloud-upload" : "cloud-upload-outline"}
               size={28}
               color={focused ? "#FFEB3B" : "#888"}
+              
             />
           ),
         }}
