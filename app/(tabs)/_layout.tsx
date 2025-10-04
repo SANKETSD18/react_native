@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { ActivityIndicator, View } from "react-native";
 
 export default function TabLayout() {
   const [role, setRole] = useState<string | null>(null);
@@ -28,6 +29,13 @@ export default function TabLayout() {
 
     return () => { mounted = false; sub?.subscription?.unsubscribe?.(); };
   }, []);
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#FFD700" />
+      </View>
+    );
+  }
 
   // Important: Always return Tabs; control visibility with href
   return (
@@ -66,22 +74,14 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="pdfList"
-        options={{
-          // Hide until role is resolved and equals admin
-          href: !ready || role !== "admin" ? null : undefined,
-          tabBarIcon: ({ focused }) => (
-            <Ionicons name={focused ? "document-text" : "document-text-outline"} size={28} color={focused ? "#FFEB3B" : "#888"} />
-          ),
-        }}
-      />
+      
       <Tabs.Screen
         name="upload"
         options={{
-          href: !ready || role !== "admin" ? null : undefined,
+          // href: !ready || role !== "admin" ? null : undefined,
           tabBarIcon: ({ focused }) => (
-            <Ionicons name={focused ? "cloud-upload" : "cloud-upload-outline"} size={28} color={focused ? "#FFEB3B" : "#888"} />
+                        <Ionicons name={focused ? "document-text" : "document-text-outline"} size={28} color={focused ? "#FFEB3B" : "#888"} />
+
           ),
         }}
       />

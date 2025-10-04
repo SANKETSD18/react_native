@@ -7,44 +7,67 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null); // NEW
-  // console.log("hello");
+  const [role, setRole] = useState<string | null>(null);
 
+  // ------------------------
+  // Fetch role from profiles & inject into JWT
+  // ------------------------
+  const fetchRole = async (uid: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', uid)
+      .maybeSingle();
+
+    if (error) {
+      return Alert.alert('Role error', error.message);
+    }
+
+    const fetchedRole = data?.role ?? 'guest';
+
+    // Local state
+    setRole(fetchedRole);
+
+    // JWT update
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { role: fetchedRole },
+    });
+
+    if (updateError) {
+      console.error("JWT update failed:", updateError.message);
+    } else {
+      console.log("Role injected into JWT:", fetchedRole);
+    }
+  };
+
+  // ------------------------
+  // Initial load & auth state listener
+  // ------------------------
   useEffect(() => {
-    // Load existing session user
-    console.clear()
+    console.clear();
+
+    // Load existing session
     supabase.auth.getUser().then(({ data }) => {
       const user = data.user;
-          //  console.log('mount getUser uid:', data.user?.id);
-
       if (user) {
         setSessionEmail(user.email ?? null);
-        fetchRole(user.id).catch(() => { });
+        setRole(user.user_metadata?.role ?? "guest"); // JWT से role set करो
       }
-    }); 
+    });
+
     // Listen to auth state changes
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      // console.log('Auth event:', event);
       const user = session?.user ?? null;
       setSessionEmail(user?.email ?? null);
-      if (user?.id) fetchRole(user.id).catch(() => setRole(null));
-      else setRole(null);
+      setRole(user?.user_metadata?.role ?? "guest"); // JWT से role set करो
     });
-    return () => { sub.subscription.unsubscribe(); };
+
+    return () => sub.subscription.unsubscribe();
   }, []);
 
-  const fetchRole = async (uid: string) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', uid)
-    .maybeSingle();
-  if (error) return Alert.alert('Role error', error.message); // step 2
-  // Alert.alert('Role', data?.role ?? 'guest'); // step 3
-  setRole(data?.role ?? 'guest');
-};
-
-
+  // ------------------------
+  // Sign Up
+  // ------------------------
   const signUp = async () => {
     if (!email || !password) return Alert.alert('Error', 'Enter email & password');
     setLoading(true);
@@ -54,15 +77,35 @@ export default function AuthScreen() {
     Alert.alert('Success', 'Verification link sent. Please confirm email, then log in.');
   };
 
+  // ------------------------
+  // Sign In
+  // ------------------------
   const signIn = async () => {
-    if (!email || !password) return Alert.alert('Error', 'Enter email & password');
+    if (!email || !password) return Alert.alert("Error", "Enter email & password");
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
     setLoading(false);
-    if (error) return Alert.alert('Login failed', error.message);
-    if (data.user?.id) fetchRole(data.user.id).catch(() => { });
+
+    if (error) return Alert.alert("Login failed", error.message);
+
+    if (data.user?.id) {
+      // JWT में role inject करो
+      await fetchRole(data.user.id);
+
+      // Verify
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log("JWT Role:", user?.user_metadata?.role);
+    }
   };
 
+  // ------------------------
+  // Sign Out
+  // ------------------------
   const signOut = async () => {
     await supabase.auth.signOut();
     setEmail('');
@@ -70,9 +113,12 @@ export default function AuthScreen() {
     setRole(null);
   };
 
+  // ------------------------
+  // Render
+  // ------------------------
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Supabase Auth</Text>
+      <Text style={styles.title}>WELCOME TO PRADESH TIMES</Text>
 
       {sessionEmail ? (
         <>
@@ -81,11 +127,9 @@ export default function AuthScreen() {
           <TouchableOpacity style={[styles.button, styles.danger]} onPress={signOut}>
             <Text style={styles.buttonText}>Logout</Text>
           </TouchableOpacity>
-          
         </>
       ) : (
         <>
-
           <TextInput
             style={styles.input}
             placeholder="email@example.com"

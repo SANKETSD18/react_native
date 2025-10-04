@@ -1,16 +1,13 @@
-import { supabase } from "@/lib/supabaseClient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { useNavigation } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Button,
   FlatList,
-  Linking,
   Platform,
   SafeAreaView,
   StatusBar,
@@ -19,218 +16,192 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
+import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from "../providers/AuthProvider";
+import PdfPreview from "../components/pdfPreview";
 
 const BUCKET = "epaper-pdf";
 
+interface PdfFile {
+  name: string;
+  url: string;
+  path: string;
+}
+
 export default function PdfUploader() {
-  // pdfList state
-  const navigation = useNavigation();
-  const [pdfList, setPdfList] = useState<{ name: string; url: string; path: string }[]>([]);
-
-  const [search, setSearch] = useState("");
-  const [cities] = useState<string[]>([
-    "Bhopal",
-    "Sehore",
-    "Vidisha",
-    "Rajgarh",
-    "Narmadapuram",
-  ]); // predefined cities
-  const [selectedCity, setSelectedCity] = useState("Bhopal");
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [pdfList, setPdfList] = useState<PdfFile[]>([]);
+  const [search, setSearch] = useState<string>("");
+  const [cities] = useState<string[]>(["Bhopal", "Sehore", "Vidisha", "Rajgarh", "Narmadapuram"]);
+  const [selectedCity, setSelectedCity] = useState<string>("Bhopal");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const { role } = useAuth();
 
-  // Upload PDF
-  const uploadPDF = async () => {
+  // Separate state for showing PDF preview
+  const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
+
+  const fetchPDFs = useCallback(async () => {
     try {
-      setMessage(null);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "application/pdf",
-      });
-
-      if (!result.assets || result.assets.length === 0) {
-        Alert.alert("Error", "No file selected.");
-        return;
-      }
-
-      const fileUri = result.assets[0].uri;
-      const fileNameFromPicker = result.assets[0].name;
-
-      if (!fileUri || !fileNameFromPicker) {
-        Alert.alert("Error", "Could not get file details.");
-        return;
-      }
-
-      if (!selectedCity.trim()) {
-        Alert.alert("Error", "Please select city.");
-        return;
-      }
-
-      const day = String(selectedDate.getDate()).padStart(2, "0");
-      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-      const year = selectedDate.getFullYear();
-      const fileName = `${selectedCity}-${day}-${month}-${year}.pdf`;
-
-      setLoading(true);
-
-      // Read file as base64 → Uint8Array
-      const base64 = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-
-      // Upload to Supabase
-      const { error } = await supabase.storage
-        .from(BUCKET)
-        .upload(fileName, byteArray, {
-          contentType: "application/pdf",
-          upsert: true,
-        });
-
+      const { data, error } = await supabase.storage.from(BUCKET).list("", { limit: 100 });
       if (error) {
-        setMessage("❌ Upload Failed: " + error.message);
-      } else {
-        setMessage("✅ PDF uploaded successfully!");
-        fetchPDFs();
+        console.error("Fetch PDFs error:", error);
+        return;
       }
+      const filesWithUrls: PdfFile[] = data.map((file) => {
+        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(file.name);
+        return { name: file.name, url: urlData.publicUrl, path: file.name };
+      });
+      setPdfList(filesWithUrls);
     } catch (err) {
-      console.error("Upload error:", err);
-      setMessage("⚠️ Something went wrong during upload.");
-    } finally {
-      setLoading(false);
+      console.error("Fetch PDFs exception:", err);
     }
-  };
-
-  // Fetch PDFs
-  const fetchPDFs = async () => {
-    const { data, error } = await supabase.storage.from(BUCKET).list("", {
-      limit: 100,
-      offset: 0,
-    });
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    const filesWithUrls = data.map((file) => {
-      const { data: urlData } = supabase.storage
-        .from(BUCKET)
-        .getPublicUrl(file.name);
-
-      return {
-        name: file.name,
-        url: urlData.publicUrl,
-        path: file.name, // 👈 अब path भी आ जाएगा
-      };
-    });
-
-    setPdfList(filesWithUrls);
-  };
-
-
-  // Delete PDF
-  const deletePDF = async (filePath: string) => {
-    Alert.alert("Confirm Delete", `Are you sure you want to delete ${filePath}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const { error } = await supabase.storage
-              .from(BUCKET)
-              .remove([filePath]); // <- ab exact path delete hoga
-
-            if (error) {
-              Alert.alert("Error", error.message);
-            } else {
-              Alert.alert("Deleted", "PDF deleted successfully!");
-              fetchPDFs();
-            }
-          } catch (err) {
-            console.error("Delete Error:", err);
-            Alert.alert("Error", "Something went wrong while deleting.");
-          }
-        },
-      },
-    ]);
-  };
-
-
-  // Open PDF in browser / viewer
-  const openPDF = async (url: string) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url); // OS native PDF viewer open होगा
-      } else {
-        Alert.alert("Error", "Cannot open PDF file");
-      }
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", "Failed to open PDF");
-    }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPDFs();
-  }, []);
+  }, [fetchPDFs]);
 
-  const filteredList = pdfList.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
+  const uploadPDF = useCallback(async () => {
+    try {
+      setLoading(true);
+      setMessage(null);
+
+      const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf" });
+      if (!result.assets || !result.assets.length) {
+        setLoading(false);
+        return Alert.alert("Error", "No file selected.");
+      }
+
+      const fileUri = result.assets[0].uri;
+      const fileName = `${selectedCity}-${String(selectedDate.getDate()).padStart(2, "0")}-${String(
+        selectedDate.getMonth() + 1
+      ).padStart(2, "0")}-${selectedDate.getFullYear()}.pdf`;
+
+      // Generate signed upload URL
+      const { data: signedUrlData, error: urlError } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUploadUrl(fileName);
+
+      if (urlError || !signedUrlData) {
+        setMessage("Failed to get upload URL: " + urlError?.message);
+        setLoading(false);
+        return;
+      }
+
+      const signedUrl = signedUrlData.signedUrl;
+
+      // Upload file using FileSystem uploadAsync
+      const uploadResult = await FileSystem.uploadAsync(signedUrl, fileUri, {
+        httpMethod: "PUT",
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: {
+          "Content-Type": "application/pdf",
+        },
+      });
+
+      if (uploadResult.status === 200) {
+        setMessage("✅ PDF uploaded successfully!");
+        setUploadedFileName(fileName);
+        fetchPDFs();
+      } else {
+        setMessage(`Upload failed with status: ${uploadResult.status}`);
+        console.error("Upload result:", uploadResult);
+      }
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setMessage("⚠️ Upload error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCity, selectedDate, fetchPDFs]);
+
+  const deletePDF = useCallback(
+    (filePath: string) => {
+      Alert.alert("Confirm Delete", `Are you sure you want to delete ${filePath}?`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase.storage.from(BUCKET).remove([filePath]);
+              if (error) Alert.alert("Error", error.message);
+              else {
+                Alert.alert("Deleted", "PDF deleted successfully!");
+                fetchPDFs();
+              }
+            } catch (err) {
+              console.error("Delete PDF error:", err);
+              Alert.alert("Error", "Something went wrong while deleting.");
+            }
+          },
+        },
+      ]);
+    },
+    [fetchPDFs]
   );
 
+  const filteredList = pdfList.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
+
+  // If a PDF is selected for preview, show the PdfPreview component
+  if (selectedPdf) {
+    return <PdfPreview pdfUrl={selectedPdf} goBack={() => setSelectedPdf(null)} />;
+  }
+
   return (
-    <SafeAreaView style={{
-      flex: 1,
-      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0, // 👈 Android fix
-      backgroundColor: "#fff", // ताकि white रहे
-      paddingHorizontal: 20,
-    }}>
-      {/* City Picker */}
-      <Text>Select City:</Text>
-      <Picker
-        selectedValue={selectedCity}
-        onValueChange={(value) => setSelectedCity(value)}
-        style={{ marginVertical: 10 }}
-      >
-        {cities.map((city) => (
-          <Picker.Item key={city} label={city} value={city} />
-        ))}
-      </Picker>
+    <SafeAreaView
+      style={{
+        flex: 1,
+        paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+        backgroundColor: "#fff",
+        paddingHorizontal: 20,
+      }}
+    >
+      {/* Admin-only upload section */}
+      {role === "admin" && (
+        <>
+          <Text>Select City:</Text>
+          <Picker selectedValue={selectedCity} onValueChange={(itemValue) => setSelectedCity(itemValue)} style={{ marginVertical: 10 }}>
+            {cities.map((city) => (
+              <Picker.Item key={city} label={city} value={city} />
+            ))}
+          </Picker>
 
-      {/* Date Picker */}
-      <Button title="Select Date" onPress={() => setShowDatePicker(true)} />
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, date) => {
-            setShowDatePicker(Platform.OS === "ios");
-            if (date) setSelectedDate(date);
-          }}
-        />
+          <Button title="Select Date" onPress={() => setShowDatePicker(true)} />
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(event, date) => {
+                setShowDatePicker(Platform.OS === "ios");
+                if (date) setSelectedDate(date);
+              }}
+            />
+          )}
+
+          {loading ? (
+            <View style={{ alignItems: "center", marginVertical: 10 }}>
+              <ActivityIndicator size="large" color="blue" />
+              <Text style={{ marginTop: 5 }}>Uploading...</Text>
+            </View>
+          ) : (
+            <Button title="Upload PDF" onPress={uploadPDF} />
+          )}
+
+          {message && <Text style={{ marginVertical: 10, textAlign: "center" }}>{message}</Text>}
+
+          {uploadedFileName && (
+            <Text style={{ marginVertical: 8, fontWeight: "bold", color: "green", textAlign: "center" }}>
+              📄 {uploadedFileName} added successfully!
+            </Text>
+          )}
+        </>
       )}
 
-      {/* Upload Button */}
-      {loading ? (
-        <View style={{ alignItems: "center", marginVertical: 10 }}>
-          <ActivityIndicator size="large" color="blue" />
-          <Text style={{ marginTop: 5 }}>Uploading...</Text>
-        </View>
-      ) : (
-        <Button title="Upload PDF" onPress={uploadPDF} />
-      )}
-
-      {/* Success/Error Message */}
-      {message && (
-        <Text style={{ marginVertical: 10, textAlign: "center" }}>{message}</Text>
-      )}
-
-      {/* Search */}
       <TextInput
         placeholder="🔍 Search PDF by name..."
         value={search}
@@ -244,10 +215,9 @@ export default function PdfUploader() {
         }}
       />
 
-      {/* PDF List */}
       <FlatList
         data={filteredList}
-        keyExtractor={(item) => item.name}
+        keyExtractor={(item) => item.path}
         renderItem={({ item }) => (
           <View
             style={{
@@ -259,14 +229,16 @@ export default function PdfUploader() {
               borderColor: "#eee",
             }}
           >
-            <TouchableOpacity onPress={() => openPDF(item.url)} style={{ flex: 1 }}>
+            <TouchableOpacity onPress={() => setSelectedPdf(item.url)} style={{ flex: 1 }}>
               <Text style={{ color: "blue" }}>{item.name}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => deletePDF(item.path)}>
-              <Text style={{ color: "red" }}>🗑 Delete</Text>
-            </TouchableOpacity>
 
-
+            {/* Show delete button only for admin */}
+            {role === "admin" && (
+              <TouchableOpacity onPress={() => deletePDF(item.path)}>
+                <Text style={{ color: "red" }}>🗑 Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       />
