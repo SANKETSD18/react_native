@@ -39,6 +39,7 @@ export default function PdfUploader() {
   const [message, setMessage] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const { role } = useAuth();
+  //  console.log(role) 
 
   // Separate state for showing PDF preview
   const [selectedPdf, setSelectedPdf] = useState<string | null>(null);

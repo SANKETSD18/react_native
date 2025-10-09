@@ -1,83 +1,151 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
   FlatList,
-  TouchableOpacity,
   SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Platform,
   StatusBar,
-  Platform
+  Image,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import NewsDialog from "../components/NewsDialog";
+import { useAuth } from "../providers/AuthProvider";
+import { supabase } from "@/lib/supabaseClient";
+
+type NewsBase = {
+  title: string;
+  description: string;
+  category: string;
+  image_url?: string | null;
+  video_url?: string | null;
+};
+
+type NewsData = NewsBase & {
+  id: string;
+};
+
+const News = () => {
+  const { user } = useAuth();
+  const role: string = user?.user_metadata?.role || "guest";
+  const email = user?.user_metadata?.email;
+  const username = email?.split("@")[0] || "";
+
+  const [showDialog, setShowDialog] = useState(false);
+  const [newsList, setNewsList] = useState<NewsData[]>([]);
+
+  // Fetch news from Supabase on mount
+  useEffect(() => {
+    const fetchNews = async () => {
+      const { data, error } = await supabase
+        .from("news")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching news:", error);
+      } else {
+        setNewsList(data || []);
+      }
+    };
+    fetchNews();
+  }, []);
+
+  // Edit handler (implement as needed)
+  const handleEdit = (item: NewsData) => {
+    console.log("Edit news:", item);
+    // Your edit logic here
+  };
+
+  // Delete handler
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("news").delete().eq("id", id);
+    if (error) {
+      console.error("Delete error:", error);
+    } else {
+      setNewsList(prev => prev.filter(news => news.id !== id));
+    }
+  };
+
+  // On submitting new news from dialog
+  const handleNewsSubmit = async (data: NewsBase) => {
+  const { title, description, category, image_url, video_url } = data;
+
+  const newEntry = { title, description, category, image_url: image_url || null, video_url: video_url || null };
+
+  const { data: insertedData, error } = await supabase.from("news").insert([newEntry]).select();
+
+  if (error) {
+    console.error("Insert news error:", error);
+    return;
+  }
+
+  if (insertedData && insertedData.length > 0) {
+    setNewsList(prev => [insertedData[0], ...prev]);
+  }
+  setShowDialog(false);
+};
 
 
-const newsData = [
-  {
-    id: "1",
-    category: "STYLE & BEAUTY",
-    title: "Jane Birkin, actor, singer and style icon, dies at 76 in Paris",
-    time: "20 minutes ago",
-    image: "https://via.placeholder.com/150", // replace with real url
-  },
-  {
-    id: "2",
-    category: "SPORT",
-    title: "Salt Bae touched the World Cup trophy after Argentina win...",
-    time: "21 minutes ago",
-    image: "https://via.placeholder.com/150",
-  },
-  {
-    id: "3",
-    category: "TECH",
-    title: "New AI tool changes everything in development...",
-    time: "30 minutes ago",
-    image: "https://via.placeholder.com/150",
-  },
-];
-
-const News = ({ route }: { route: any }) => {
-  const { user } = useLocalSearchParams(); // Login से name pass कर सकते हो
-
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.card}>
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
-      <Text style={styles.category}>{item.category}</Text>
-      <Text style={styles.cardTitle} numberOfLines={2}>
-        {item.title}
-      </Text>
-      <Text style={styles.time}>{item.time}</Text>
-    </TouchableOpacity>
+  // Render each news item
+  const renderItem = ({ item }: { item: NewsData }) => (
+    <View style={styles.itemContainer}>
+      {item.image_url ? (
+        <Image source={{ uri: item.image_url }} style={styles.image} />
+      ) : (
+        <View style={[styles.image, { backgroundColor: "#ccc" }]} />
+      )}
+      <View style={styles.textContainer}>
+        <Text style={styles.title} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {item.description}
+        </Text>
+        <Text style={styles.readMore}>Read more</Text>
+      </View>
+      <View style={styles.actionContainer}>
+        <TouchableOpacity onPress={() => handleEdit(item)} style={styles.actionButton}>
+          <Text style={styles.actionText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.actionButton}>
+          <Text style={styles.actionText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   return (
-  <SafeAreaView style={styles.container}>
-      {/* Top Greeting Section */}
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-         <Text style={styles.greeting}>Good Morning {user || "Guest"},</Text>
-        <Text style={styles.update}>Update news today</Text>
-        <Text style={styles.date}>Today, 19 July 2023</Text>
+        <Text style={styles.greeting}>Welcome back, {username}</Text>
+        <Text style={styles.date}>Today, {new Date().toLocaleDateString()}</Text>
       </View>
 
-      {/* Horizontal Scroll News */}
+      {role === "admin" && (
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowDialog(true)}>
+          <Text style={styles.addButtonText}>Add News</Text>
+        </TouchableOpacity>
+      )}
+
       <FlatList
-        data={newsData}
+        data={newsList}
+        keyExtractor={item => item.id}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 10 }}
+        contentContainerStyle={{ padding: 10 }}
       />
+
+      <NewsDialog visible={showDialog} onClose={() => setShowDialog(false)} onSubmit={handleNewsSubmit} />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
- container: {
+  container: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0, // 👈 Fix
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0,
   },
   header: {
     backgroundColor: "#C62828",
@@ -90,46 +158,69 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
   },
-  update: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginTop: 10,
-  },
   date: {
     fontSize: 14,
     color: "#eee",
     marginTop: 5,
   },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginRight: 12,
-    width: 200,
+  addButton: {
+    backgroundColor: "#C62828",
     padding: 10,
-     boxShadow: "0px 3px 6px rgba(0,0,0,0.16)",
-  },
-  cardImage: {
-    width: "100%",
-    height: 100,
+    margin: 10,
     borderRadius: 8,
-    marginBottom: 8,
+    alignItems: "center",
   },
-  category: {
-    fontSize: 12,
-    color: "#C62828",
+  addButtonText: {
+    color: "#fff",
+    fontSize: 16,
     fontWeight: "bold",
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 5,
-    color: "#333",
+  itemContainer: {
+    flexDirection: "row",
+    marginBottom: 10,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 10,
+    elevation: 2,
+    alignItems: "center",
   },
-  time: {
-    fontSize: 12,
-    color: "#888",
+  image: {
+    width: 80,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  title: {
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  description: {
+    color: "#555",
+    marginTop: 2,
+  },
+  readMore: {
     marginTop: 4,
+    color: "#C62828",
+    fontWeight: "500",
+  },
+  actionContainer: {
+    justifyContent: "space-between",
+    height: 60,
+  },
+  actionButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#C62828",
+    marginVertical: 2,
+    borderRadius: 4,
+  },
+  actionText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });
 
