@@ -1,89 +1,98 @@
-import React, { useState } from "react";
-import { Image, Modal, Text, TouchableOpacity, View } from "react-native";
-import Video from "react-native-video";
+import React from "react";
+import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { NewsData } from "../../types/news";
+import { useAuth } from "../providers/AuthProvider";
 
-type NewsData = {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  image_url?: string | null;
-  video_url?: string | null;
-};
-
-type NewsItemProps = {
+type Props = {
   item: NewsData;
-  role: string;
   onEdit: (item: NewsData) => void;
-  onDelete: (id: string) => void;
+  onDelete: () => void;
 };
 
-const NewsItem: React.FC<NewsItemProps> = ({ item, role, onEdit, onDelete }) => {
-  const [previewVisible, setPreviewVisible] = useState(false);
+const NewsListItem: React.FC<Props> = ({ item, onEdit, onDelete }) => {
+  const { user } = useAuth();
+  const role: string = user?.user_metadata?.role || "guest";
 
-  const isImage = Boolean(item.image_url);
-  const mediaUri = item.image_url || item.video_url || "";
-
-  return (
-    <View style={{ flexDirection: "row", padding: 10, alignItems: "center" }}>
-      <TouchableOpacity onPress={() => setPreviewVisible(true)}>
-        {isImage ? (
-          <Image source={{ uri: mediaUri }} style={{ width: 60, height: 60, borderRadius: 8 }} />
-        ) : (
-          <View
-            style={{
-              width: 60,
-              height: 60,
-              borderRadius: 8,
-              backgroundColor: "#000",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#fff" }}>Video</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-
-      <View style={{ flex: 1, paddingHorizontal: 10 }}>
-        <Text style={{ fontWeight: "bold", fontSize: 16 }}>{item.title}</Text>
-        <Text numberOfLines={2} style={{ color: "#555" }}>
+  return ( // ✅ MANDATORY return
+    <View style={styles.itemContainer}>
+      {item.image_url ? (
+        <Image source={{ uri: item.image_url }} style={styles.image} />
+      ) : (
+        <View style={[styles.image, { backgroundColor: "#ccc" }]} />
+      )}
+      
+      <View style={styles.textContainer}>
+        <Text style={styles.title} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.description} numberOfLines={2}>
           {item.description}
         </Text>
+        <Text style={styles.readMore}>Read more</Text>
       </View>
 
       {role === "admin" && (
-        <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity onPress={() => onEdit(item)} style={{ marginRight: 10 }}>
-            <Text style={{ color: "blue" }}>Edit</Text>
+        <View style={styles.actionContainer}>
+          <TouchableOpacity onPress={() => onEdit(item)} style={styles.actionButton}>
+            <Text style={styles.actionText}>Edit</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => onDelete(item.id)}>
-            <Text style={{ color: "red" }}>Delete</Text>
+          <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
+            <Text style={styles.actionText}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
-
-      <Modal visible={previewVisible} transparent={true} onRequestClose={() => setPreviewVisible(false)}>
-        <TouchableOpacity
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", alignItems: "center" }}
-          onPress={() => setPreviewVisible(false)}
-        >
-          {isImage ? (
-            <Image source={{ uri: mediaUri }} style={{ width: "90%", height: "70%", borderRadius: 10 }} resizeMode="contain" />
-          ) : (
-            <Video
-              source={{ uri: mediaUri }}
-              style={{ width: "90%", height: 220, borderRadius: 10 }}
-              controls
-              resizeMode="contain"
-            />
-          )}
-          <Text style={{ color: "#fff", marginTop: 10, fontSize: 16, textAlign: "center" }}>{item.title}</Text>
-          <Text style={{ color: "#ddd", marginTop: 5, textAlign: "center" }}>{item.description}</Text>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
-};
+}; // ✅ Closing with return
 
-export default NewsItem;
+const styles = StyleSheet.create({
+  itemContainer: {
+    flexDirection: "row",
+    marginBottom: 10,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 10,
+    elevation: 2,
+    alignItems: "center",
+  },
+  image: {
+    width: 80,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  title: {
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  description: {
+    color: "#555",
+    marginTop: 2,
+  },
+  readMore: {
+    marginTop: 4,
+    color: "#C62828",
+    fontWeight: "500",
+  },
+  actionContainer: {
+    justifyContent: "space-between",
+    height: 60,
+  },
+  actionButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#C62828",
+    marginVertical: 2,
+    borderRadius: 4,
+  },
+  actionText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+});
+
+export default NewsListItem;

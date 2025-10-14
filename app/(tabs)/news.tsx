@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   SafeAreaView,
   StyleSheet,
@@ -8,23 +9,13 @@ import {
   View,
   Platform,
   StatusBar,
-  Image,
 } from "react-native";
 import NewsDialog from "../components/NewsDialog";
+import NewsListItem from "../components/NewsItem";
+import NewsDetailView from "../components/NewsDetailView";
 import { useAuth } from "../providers/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
-
-type NewsBase = {
-  title: string;
-  description: string;
-  category: string;
-  image_url?: string | null;
-  video_url?: string | null;
-};
-
-type NewsData = NewsBase & {
-  id: string;
-};
+import { NewsData } from "../../types/news";
 
 const News = () => {
   const { user } = useAuth();
@@ -33,110 +24,170 @@ const News = () => {
   const username = email?.split("@")[0] || "";
 
   const [showDialog, setShowDialog] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [newsList, setNewsList] = useState<NewsData[]>([]);
+  const [selectedNews, setSelectedNews] = useState<NewsData | null>(null);
 
-  // Fetch news from Supabase on mount
-  useEffect(() => {
-    const fetchNews = async () => {
-      const { data, error } = await supabase
-        .from("news")
-        .select("*")
-        .order("created_at", { ascending: false });
+  const fetchNews = async () => {
+    const { data, error } = await supabase
+      .from("news")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching news:", error);
-      } else {
-        setNewsList(data || []);
-      }
-    };
-    fetchNews();
-  }, []);
-
-  // Edit handler (implement as needed)
-  const handleEdit = (item: NewsData) => {
-    console.log("Edit news:", item);
-    // Your edit logic here
-  };
-
-  // Delete handler
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("news").delete().eq("id", id);
     if (error) {
-      console.error("Delete error:", error);
+      console.error("Error fetching news:", error);
     } else {
-      setNewsList(prev => prev.filter(news => news.id !== id));
+      setNewsList(data || []);
     }
   };
 
-  // On submitting new news from dialog
-  const handleNewsSubmit = async (data: NewsBase) => {
-  const { title, description, category, image_url, video_url } = data;
+  useEffect(() => {
+    fetchNews();
+  }, []);
 
-  const newEntry = { title, description, category, image_url: image_url || null, video_url: video_url || null };
+  const handleEdit = (item: NewsData) => {
+    setSelectedNews(item);
+    setIsEditMode(true);
+  };
 
-  const { data: insertedData, error } = await supabase.from("news").insert([newEntry]).select();
+  const handleDelete = async (newsId: string, imagePath?: string | null, videoPath?: string | null) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this news?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (imagePath) {
+                console.log("Deleting image from storage:", imagePath);
+                const { error: imageDeleteError } = await supabase.storage
+                  .from("news-media")
+                  .remove([imagePath]);
+                
+                if (imageDeleteError) {
+                  console.error("Image delete error:", imageDeleteError);
+                }
+              }
 
-  if (error) {
-    console.error("Insert news error:", error);
-    return;
-  }
+              if (videoPath) {
+                console.log("Deleting video from storage:", videoPath);
+                const { error: videoDeleteError } = await supabase.storage
+                  .from("news-media")
+                  .remove([videoPath]);
+                
+                if (videoDeleteError) {
+                  console.error("Video delete error:", videoDeleteError);
+                }
+              }
 
-  if (insertedData && insertedData.length > 0) {
-    setNewsList(prev => [insertedData[0], ...prev]);
-  }
-  setShowDialog(false);
-};
+              const { error: dbError } = await supabase
+                .from("news")
+                .delete()
+                .eq("id", newsId);
 
+              if (dbError) throw dbError;
 
-  // Render each news item
+              Alert.alert("Success", "News deleted successfully!");
+              
+              fetchNews();
+            } catch (err: any) {
+              Alert.alert("Error", err.message || "Unknown error");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleNewsUpdate = async (updatedNews: NewsData & { image_path?: string | null; video_path?: string | null }) => {
+    const { error } = await supabase
+      .from("news")
+      .update({
+        title: updatedNews.title,
+        description: updatedNews.description,
+        image_url: updatedNews.image_url,
+        video_url: updatedNews.video_url,
+        image_path: updatedNews.image_path,
+        video_path: updatedNews.video_path,
+      })
+      .eq("id", updatedNews.id);
+
+    if (error) {
+      console.error("Update error:", error);
+      // alert("Failed to update news.",error);
+      return;
+    }
+
+    fetchNews();
+
+    setSelectedNews(null);
+    setIsEditMode(false);
+  };
+
+  const handleNewsSubmit = (insertedNews: NewsData) => {
+    setNewsList((prev) => [insertedNews, ...prev]);
+    setShowDialog(false);
+  };
+
   const renderItem = ({ item }: { item: NewsData }) => (
-    <View style={styles.itemContainer}>
-      {item.image_url ? (
-        <Image source={{ uri: item.image_url }} style={styles.image} />
-      ) : (
-        <View style={[styles.image, { backgroundColor: "#ccc" }]} />
-      )}
-      <View style={styles.textContainer}>
-        <Text style={styles.title} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.description} numberOfLines={2}>
-          {item.description}
-        </Text>
-        <Text style={styles.readMore}>Read more</Text>
-      </View>
-      <View style={styles.actionContainer}>
-        <TouchableOpacity onPress={() => handleEdit(item)} style={styles.actionButton}>
-          <Text style={styles.actionText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.actionButton}>
-          <Text style={styles.actionText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <TouchableOpacity onPress={() => setSelectedNews(item)}>
+      <NewsListItem 
+        item={item} 
+        onEdit={handleEdit} 
+        onDelete={() => handleDelete(item.id, item.image_path, item.video_path)}
+      />
+    </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Welcome back, {username}</Text>
-        <Text style={styles.date}>Today, {new Date().toLocaleDateString()}</Text>
-      </View>
+      {!selectedNews && (
+        <>
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Welcome back, {username}</Text>
+            <Text style={styles.date}>
+              Today, {new Date().toLocaleDateString()}
+            </Text>
+          </View>
 
-      {role === "admin" && (
-        <TouchableOpacity style={styles.addButton} onPress={() => setShowDialog(true)}>
-          <Text style={styles.addButtonText}>Add News</Text>
-        </TouchableOpacity>
+          {role === "admin" && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowDialog(true)}
+            >
+              <Text style={styles.addButtonText}>Add News</Text>
+            </TouchableOpacity>
+          )}
+
+          <FlatList
+            data={newsList}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={{ padding: 10 }}
+          />
+        </>
       )}
 
-      <FlatList
-        data={newsList}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ padding: 10 }}
-      />
+      {selectedNews && (
+        <NewsDetailView
+          news={selectedNews}
+          onBack={() => {
+            setSelectedNews(null);
+            setIsEditMode(false);
+          }}
+          editable={isEditMode}
+          onSave={handleNewsUpdate}
+        />
+      )}
 
-      <NewsDialog visible={showDialog} onClose={() => setShowDialog(false)} onSubmit={handleNewsSubmit} />
+      <NewsDialog
+        visible={showDialog}
+        onClose={() => setShowDialog(false)}
+        onSubmit={handleNewsSubmit}
+      />
     </SafeAreaView>
   );
 };
@@ -174,53 +225,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-  },
-  itemContainer: {
-    flexDirection: "row",
-    marginBottom: 10,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 10,
-    elevation: 2,
-    alignItems: "center",
-  },
-  image: {
-    width: 80,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  textContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  title: {
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  description: {
-    color: "#555",
-    marginTop: 2,
-  },
-  readMore: {
-    marginTop: 4,
-    color: "#C62828",
-    fontWeight: "500",
-  },
-  actionContainer: {
-    justifyContent: "space-between",
-    height: 60,
-  },
-  actionButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: "#C62828",
-    marginVertical: 2,
-    borderRadius: 4,
-  },
-  actionText: {
-    color: "#fff",
-    fontWeight: "600",
   },
 });
 
