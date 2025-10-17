@@ -1,90 +1,133 @@
 // app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
-import { ActivityIndicator, View } from "react-native";
-
+import { StyleSheet, Platform, View } from "react-native";
+import { useAuth } from "../providers/AuthProvider"; 
 export default function TabLayout() {
-  const [role, setRole] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const { role } = useAuth(); 
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadRole(uid?: string | null) {
-      if (!uid) { if (mounted) { setRole(null); setReady(true); } return; }
-      const { data } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
-      if (mounted) { setRole(data?.role ?? null); setReady(true); }
-    }
-
-    // Initial session
-    supabase.auth.getUser().then(({ data: { user } }) => loadRole(user?.id));
-
-    // Subscribe to auth changes
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setReady(false);
-      loadRole(session?.user?.id ?? null);
-    });
-
-    return () => { mounted = false; sub?.subscription?.unsubscribe?.(); };
-  }, []);
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#FFD700" />
-      </View>
-    );
-  }
-
-  // Important: Always return Tabs; control visibility with href
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: "#C62828",
+        tabBarInactiveTintColor: "#999",
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginTop: -5,
+          marginBottom: Platform.OS === "ios" ? 0 : 5,
+        },
         tabBarStyle: {
-          backgroundColor: "#1E325D",
-          borderTopLeftRadius: 25,
-          borderTopRightRadius: 25,
-          height: 70,
-          paddingTop: 10,
+          backgroundColor: "#fff",
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          height: Platform.OS === "ios" ? 85 : 65,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === "ios" ? 20 : 8,
+          borderTopWidth: 1,
+          borderTopColor: "#f0f0f0",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -3 },
           shadowOpacity: 0.1,
-          shadowRadius: 3,
-          elevation: 5,
+          shadowRadius: 8,
+          elevation: 10,
           position: "absolute",
+        },
+        tabBarItemStyle: {
+          paddingVertical: 5,
         },
       }}
     >
+      {/* Tab 1: Home */}
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <Ionicons name={focused ? "home" : "home-outline"} size={28} color={focused ? "#ffd900" : "#888"} />
+          title: "Home",
+          tabBarIcon: ({ focused, color }) => (
+            <View style={[
+              styles.iconContainer,
+              focused && styles.iconContainerActive
+            ]}>
+              <Ionicons 
+                name={focused ? "home" : "home-outline"} 
+                size={24} 
+                color={color} 
+              />
+            </View>
           ),
         }}
       />
+
+      {/* Tab 2: News */}
       <Tabs.Screen
         name="news"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <Ionicons name={focused ? "newspaper" : "newspaper-outline"} size={28} color={focused ? "#FFEB3B" : "#888"} />
+          title: "News",
+          tabBarIcon: ({ focused, color }) => (
+            <View style={[
+              styles.iconContainer,
+              focused && styles.iconContainerActive
+            ]}>
+              <Ionicons 
+                name={focused ? "newspaper" : "newspaper-outline"} 
+                size={24} 
+                color={color} 
+              />
+            </View>
           ),
         }}
       />
-      
+
+      {/* Tab 3: E-Paper */}
       <Tabs.Screen
         name="upload"
         options={{
-          // href: !ready || role !== "admin" ? null : undefined,
-          tabBarIcon: ({ focused }) => (
-                        <Ionicons name={focused ? "document-text" : "document-text-outline"} size={28} color={focused ? "#FFEB3B" : "#888"} />
-
+          title: "E-Paper",
+          tabBarIcon: ({ focused, color }) => (
+            <View style={[
+              styles.iconContainer,
+              focused && styles.iconContainerActive
+            ]}>
+              <Ionicons 
+                name={focused ? "document-text" : "document-text-outline"} 
+                size={24} 
+                color={color} 
+              />
+              {/* ✅ Admin badge - context se role */}
+              {role === "admin" && (
+                <View style={styles.adminDot} />
+              )}
+            </View>
           ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    width: 50,
+    height: 35,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 12,
+    position: "relative",
+  },
+  iconContainerActive: {
+    backgroundColor: "#ffebee",
+  },
+  adminDot: {
+    position: "absolute",
+    top: 2,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#2e7d32",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+});

@@ -1,3 +1,8 @@
+import { supabase } from "@/lib/supabaseClient";
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Picker } from "@react-native-picker/picker";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
   Alert,
@@ -11,13 +16,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as FileSystem from "expo-file-system";
-import * as ImagePicker from "expo-image-picker";
-import { supabase } from "@/lib/supabaseClient";
-import { Picker } from "@react-native-picker/picker";
-import { NewsData } from "../../types/news" // ✅ Import from news.tsx
-
-// ✅ Remove local type definitions - use imported NewsData instead
+import { NewsData } from "../../types/news";
+import { useAuth } from "../providers/AuthProvider";
 
 type Props = {
   visible: boolean;
@@ -28,6 +28,9 @@ type Props = {
 const BUCKET = "news-media";
 
 const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
+  const { user } = useAuth();
+  const role = user?.user_metadata?.role || "guest";
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("India");
@@ -48,15 +51,15 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
   // Helper: Get file extension from URI
   const getFileExtension = (uri: string): string => {
-    const lastDot = uri.lastIndexOf('.');
-    if (lastDot === -1) return '.jpg';
+    const lastDot = uri.lastIndexOf(".");
+    if (lastDot === -1) return ".jpg";
     return uri.substring(lastDot);
   };
 
@@ -67,7 +70,8 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
     contentType: string
   ): Promise<string | null> => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission required", "Media library access is needed");
         return null;
@@ -82,13 +86,9 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      const byteArray = Uint8Array.from(
-        atob(base64),
-        (c) => c.charCodeAt(0)
-      );
+      const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
-      const { error: uploadError } = await supabase
-        .storage
+      const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(path, byteArray, {
           contentType,
@@ -97,7 +97,9 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path);
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(path);
       if (!urlData?.publicUrl) throw new Error("Failed to get public URL");
 
       return urlData.publicUrl;
@@ -107,7 +109,79 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
     }
   };
 
-  const pickAndUploadMedia = async () => {
+   const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      let uri = asset.uri;
+      if (Platform.OS === "android" && !uri.startsWith("file://")) {
+        uri = "file://" + uri;
+      }
+
+      const fileNameLocal = asset.fileName || `${Date.now()}.jpg`;
+
+      setFileName(fileNameLocal);
+      setImageUrl(null);
+      setVideoUrl(null);
+
+      setPicked({
+        uri,
+        type: "image",
+        fileName: fileNameLocal,
+        contentType: "image/jpeg",
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const pickVideo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      let uri = asset.uri;
+      if (Platform.OS === "android" && !uri.startsWith("file://")) {
+        uri = "file://" + uri;
+      }
+
+      const fileNameLocal = asset.fileName || `${Date.now()}.mp4`;
+
+      setFileName(fileNameLocal);
+      setImageUrl(null);
+      setVideoUrl(null);
+
+      setPicked({
+        uri,
+        type: "video",
+        fileName: fileNameLocal,
+        contentType: "video/mp4",
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Remove selected media
+  const removeMedia = () => {
+    setPicked(null);
+    setFileName(null);
+    setImageUrl(null);
+    setVideoUrl(null);
+  };const pickAndUploadMedia = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images", "videos"],
@@ -153,10 +227,32 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !description.trim() || !category) {
-      Alert.alert("Validation Error", "Please fill all required fields.");
+    console.log("🔵 Submit clicked");
+    console.log("🔵 Role:", role);
+    console.log("🔵 Title:", title.trim());
+    console.log("🔵 Description:", description.trim());
+    console.log("🔵 Category:", category);
+
+    if (role !== "admin") {
+      console.log("🔴 Not admin");
+      onClose();
+      setTimeout(() => {
+        console.log("🔴 Showing unauthorized alert");
+        Alert.alert("Unauthorized", "Only admins can add news");
+      }, 100);
       return;
     }
+
+    if (!title.trim() || !description.trim() || !category) {
+      console.log("🔴 Validation failed");
+      setTimeout(() => {
+        console.log("🔴 Showing validation alert");
+        Alert.alert("Validation Error", "Please fill all required fields.");
+      }, 100);
+      return;
+    }
+
+    console.log("✅ Validation passed, starting upload...");
 
     setUploading(true);
 
@@ -168,7 +264,7 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
         .single();
 
       if (insertError) throw insertError;
-      
+
       const newsId = insertedNews.id;
       const createdAt = insertedNews.created_at;
 
@@ -179,10 +275,11 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
         const date = formatDate(createdAt);
         const extension = getFileExtension(picked.uri);
         const timestamp = Date.now();
-        const fileName = picked.type === "image" 
-          ? `image-${timestamp}${extension}` 
-          : `video-${timestamp}${extension}`;
-        
+        const fileName =
+          picked.type === "image"
+            ? `image-${timestamp}${extension}`
+            : `video-${timestamp}${extension}`;
+
         filePath = `${date}/${newsId}/${fileName}`;
         console.log("Uploading to path:", filePath);
 
@@ -251,13 +348,17 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
       <View style={styles.modalContainer}>
         <View style={styles.dialog}>
           <Text style={styles.header}>Add News</Text>
-          <ScrollView>
+          
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Title Input */}
             <TextInput
               placeholder="Title"
               value={title}
               onChangeText={setTitle}
               style={styles.input}
             />
+
+            {/* Description Input */}
             <TextInput
               placeholder="Description"
               value={description}
@@ -265,52 +366,99 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
               style={[styles.input, { height: 80 }]}
               multiline
             />
-            <Picker
-              selectedValue={category}
-              onValueChange={setCategory}
-              style={{ height: 50, width: "100%" }}
-            >
-              <Picker.Item label="India" value="India" />
-              <Picker.Item label="International" value="International" />
-              <Picker.Item label="Sport" value="Sport" />
-              <Picker.Item label="Entertainment" value="Entertainment" />
-            </Picker>
 
+            {/* Category Picker */}
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={category}
+                onValueChange={setCategory}
+                style={styles.picker}
+              >
+                <Picker.Item label="🇮🇳 India" value="India" />
+                <Picker.Item label="🌍 International" value="International" />
+                <Picker.Item label="⚽ Sport" value="Sport" />
+                <Picker.Item label="🎬 Entertainment" value="Entertainment" />
+              </Picker>
+            </View>
+
+            {/* ✅ NEW: Beautiful Media Upload Section */}
+            <View style={styles.mediaSection}>
+              <Text style={styles.mediaSectionTitle}>Add Media (Optional)</Text>
+              
+              {/* Media Buttons Row */}
+              <View style={styles.mediaButtonsRow}>
+                <TouchableOpacity
+                  style={styles.mediaButton}
+                  onPress={pickImage}
+                  disabled={uploading}
+                >
+                  <Ionicons name="image" size={24} color="#C62828" />
+                  <Text style={styles.mediaButtonText}>Photo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.mediaButton}
+                  onPress={pickVideo}
+                  disabled={uploading}
+                >
+                  <Ionicons name="videocam" size={24} color="#C62828" />
+                  <Text style={styles.mediaButtonText}>Video</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Selected Media Preview */}
+              {picked && (
+                <View style={styles.mediaPreview}>
+                  {picked.type === "image" && (
+                    <Image
+                      source={{ uri: picked.uri }}
+                      style={styles.previewImage}
+                      resizeMode="cover"
+                    />
+                  )}
+                  
+                  {picked.type === "video" && (
+                    <View style={styles.videoPreview}>
+                      <Ionicons name="play-circle" size={50} color="#C62828" />
+                      <Text style={styles.videoText}>Video Selected</Text>
+                    </View>
+                  )}
+
+                  {/* File Name & Remove Button */}
+                  <View style={styles.mediaInfo}>
+                    <Text style={styles.fileName} numberOfLines={1}>
+                      {fileName}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={removeMedia}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#ff4444" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Submit Button */}
             <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={pickAndUploadMedia}
-              disabled={uploading}
-            >
-              <Text style={{ color: uploading ? "gray" : "white" }}>
-                {uploading ? "Uploading..." : "Upload File (Photo/Video)"}
-              </Text>
-            </TouchableOpacity>
-
-            {imageUrl && (
-              <Image
-                source={{ uri: imageUrl }}
-                style={{ width: 100, height: 60, marginTop: 8 }}
-              />
-            )}
-            {videoUrl && (
-              <Text style={{ marginTop: 8, textAlign: "center" }}>
-                Video Uploaded
-              </Text>
-            )}
-            {fileName && (
-              <Text style={{ marginTop: 8, textAlign: "center", color: "#555" }}>
-                Uploaded File: {fileName}
-              </Text>
-            )}
-
-            <TouchableOpacity
-              style={[styles.submitButton, uploading && { backgroundColor: "gray" }]}
+              style={[
+                styles.submitButton,
+                (uploading || !title.trim() || !description.trim()) && styles.submitButtonDisabled,
+              ]}
               onPress={handleSubmit}
-              disabled={uploading || !title.trim()}
+              disabled={uploading || !title.trim() || !description.trim()}
             >
-              <Text style={styles.submitText}>Submit</Text>
+              {uploading ? (
+                <View style={styles.uploadingContainer}>
+                  <Text style={styles.submitText}>Submitting...</Text>
+                </View>
+              ) : (
+                <Text style={styles.submitText}>Submit News</Text>
+              )}
             </TouchableOpacity>
 
+            {/* Cancel Button */}
             <TouchableOpacity style={styles.cancelButton} onPress={resetForm}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -331,52 +479,155 @@ const styles = StyleSheet.create({
   dialog: {
     backgroundColor: "#fff",
     width: "90%",
-    borderRadius: 12,
+    maxHeight: "85%",
+    borderRadius: 16,
     padding: 20,
   },
   header: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#C62828",
-    marginBottom: 10,
+    marginBottom: 15,
     textAlign: "center",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginVertical: 5,
-  },
-  uploadButton: {
-    backgroundColor: "#C62828",
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
     padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginVertical: 10,
+    marginVertical: 6,
+    fontSize: 15,
+    backgroundColor: "#f9f9f9",
   },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
+    marginVertical: 6,
+    backgroundColor: "#f9f9f9",
+    overflow: "hidden",
+  },
+  picker: {
+    height: 50,
+    width: "100%",
+  },
+  
+  // ✅ NEW: Media Section Styles
+  mediaSection: {
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  mediaSectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 10,
+  },
+  mediaButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  mediaButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#C62828",
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
+  },
+  mediaButtonText: {
+    color: "#C62828",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  mediaPreview: {
+    marginTop: 15,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#f5f5f5",
+  },
+  previewImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+  },
+  videoPreview: {
+    width: "100%",
+    height: 200,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 12,
+  },
+  videoText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  mediaInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    backgroundColor: "#fff",
+  },
+  fileName: {
+    flex: 1,
+    fontSize: 13,
+    color: "#555",
+  },
+  removeButton: {
+    padding: 4,
+  },
+
   submitButton: {
     backgroundColor: "#C62828",
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 15,
     alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  submitButtonDisabled: {
+    backgroundColor: "#ccc",
+    elevation: 0,
   },
   submitText: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
   },
+  uploadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   cancelButton: {
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 5,
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 8,
     alignItems: "center",
   },
   cancelText: {
     color: "#C62828",
     fontWeight: "600",
+    fontSize: 15,
   },
 });
 
 export default NewsDialog;
+
+
+
+
+

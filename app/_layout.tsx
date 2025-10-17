@@ -10,6 +10,16 @@ export default function RootLayout() {
     <AuthProvider>
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+       <Stack.Screen 
+          name="forgot-password" 
+          options={{ headerShown: false }} 
+        />
+        
+        <Stack.Screen 
+          name="reset-password" 
+          options={{ headerShown: false }} 
+        />
+      
     </Stack>
     </AuthProvider>
   );
