@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -10,55 +10,60 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-} from 'react-native';
-import { router } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { supabase } from '../lib/supabaseClient';
+} from "react-native";
+import { router } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { supabase } from "../lib/supabaseClient";
 
 export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleResetPassword = async () => {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedEmail) {
-      return Alert.alert('Error', 'Please enter your email address');
+      return Alert.alert("Error", "Please enter your email address");
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      return Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return Alert.alert("Invalid Email", "Please enter a valid email address");
     }
 
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-       redirectTo: 'pradesh-times://reset-password', // Deep link
-      });
+      const { data, error } = await supabase.auth.resetPasswordForEmail(
+        trimmedEmail,
+        {
+          redirectTo: "pradesh-times://reset-password",
+        }
+      );
 
+      console.log("Response:", data);
+      console.log("Error:", error);
       setLoading(false);
 
       if (error) {
-        return Alert.alert('Error', error.message);
+        return Alert.alert("Error", error.message);
       }
 
       Alert.alert(
-        'Check Your Email! 📧',
-        'Password reset link has been sent to your email. The link will expire in 10 minutes.',
+        "Check Your Email! 📧",
+        "Password reset link has been sent to your email. The link will expire in 10 minutes.",
         [
           {
-            text: 'OK',
+            text: "OK",
             onPress: () => router.back(),
           },
         ]
       );
 
-      setEmail('');
+      setEmail("");
     } catch (err: any) {
       setLoading(false);
-      Alert.alert('Error', err.message || 'Something went wrong');
+      Alert.alert("Error", err.message || "Something went wrong");
     }
   };
 
@@ -68,7 +73,10 @@ export default function ForgotPasswordScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reset Password</Text>
@@ -105,7 +113,11 @@ export default function ForgotPasswordScreen() {
 
         {/* Info Box */}
         <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={20} color="#1976d2" />
+          <Ionicons
+            name="information-circle-outline"
+            size={20}
+            color="#1976d2"
+          />
           <Text style={styles.infoText}>
             ⏰ Reset link expires in 10 minutes
           </Text>
@@ -114,7 +126,10 @@ export default function ForgotPasswordScreen() {
         {/* Submit Button */}
         <TouchableOpacity
           disabled={loading || !email}
-          style={[styles.submitButton, (loading || !email) && styles.buttonDisabled]}
+          style={[
+            styles.submitButton,
+            (loading || !email) && styles.buttonDisabled,
+          ]}
           onPress={handleResetPassword}
         >
           {loading ? (
@@ -128,7 +143,10 @@ export default function ForgotPasswordScreen() {
         </TouchableOpacity>
 
         {/* Back to Login */}
-        <TouchableOpacity style={styles.backToLogin} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backToLogin}
+          onPress={() => router.back()}
+        >
           <Ionicons name="arrow-back-outline" size={16} color="#C62828" />
           <Text style={styles.backToLoginText}>Back to Login</Text>
         </TouchableOpacity>
@@ -140,14 +158,14 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    backgroundColor: "#f5f5f5",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#C62828',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#C62828",
     paddingHorizontal: 16,
     paddingVertical: 16,
     elevation: 4,
@@ -157,8 +175,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
   },
   placeholder: {
     width: 32,
@@ -166,38 +184,38 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   iconContainer: {
     width: 120,
     height: 120,
-    backgroundColor: '#ffebee',
+    backgroundColor: "#ffebee",
     borderRadius: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
     marginBottom: 30,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     lineHeight: 22,
     marginBottom: 30,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 10,
     marginBottom: 16,
     paddingHorizontal: 12,
@@ -210,12 +228,12 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     fontSize: 15,
-    color: '#333',
+    color: "#333",
   },
   infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e3f2fd',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e3f2fd",
     padding: 12,
     borderRadius: 8,
     marginBottom: 20,
@@ -224,36 +242,36 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#1976d2',
+    color: "#1976d2",
   },
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#C62828',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#C62828",
     padding: 16,
     borderRadius: 10,
     gap: 8,
     elevation: 2,
   },
   submitButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   backToLogin: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 20,
     gap: 6,
   },
   backToLoginText: {
-    color: '#C62828',
+    color: "#C62828",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

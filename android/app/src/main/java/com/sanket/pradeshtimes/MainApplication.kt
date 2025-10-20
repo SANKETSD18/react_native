@@ -1,4 +1,4 @@
-package com.pradeshtimesepaper
+package com.sanket.pradeshtimes
 
 import android.app.Application
 import android.content.res.Configuration

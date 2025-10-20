@@ -1,4 +1,4 @@
-package com.pradeshtimesepaper
+package com.sanket.pradeshtimes
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

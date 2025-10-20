@@ -38,6 +38,7 @@ const News = () => {
 
   const fetchNews = async () => {
     try {
+      // console.log("Fetching news...");
       setLoading(true);
       const { data, error } = await supabase
         .from("news")

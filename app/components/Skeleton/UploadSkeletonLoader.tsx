@@ -1,4 +1,3 @@
-// components/PDFSkeletonLoader.tsx
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 

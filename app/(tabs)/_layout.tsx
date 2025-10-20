@@ -1,4 +1,3 @@
-// app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Platform, View } from "react-native";
@@ -8,17 +7,11 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: true,
-        tabBarActiveTintColor: "#C62828",
-        tabBarInactiveTintColor: "#999",
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          marginTop: -5,
-          marginBottom: Platform.OS === "ios" ? 0 : 5,
-        },
+      screenOptions={({ route }) => ({
+        tabBarActiveTintColor: "#C62828",  // ✅ Red for active
+        tabBarInactiveTintColor: "#999",    // ✅ Gray for inactive
+        
+        // ✅ MERGED SINGLE tabBarStyle
         tabBarStyle: {
           backgroundColor: "#fff",
           borderTopLeftRadius: 20,
@@ -34,11 +27,22 @@ export default function TabLayout() {
           shadowRadius: 8,
           elevation: 10,
           position: "absolute",
+          
+          // ✅ Hide tabs on upload screen
+         display: route.name === "pdfPreview" ? "none" : "flex",
         },
+        
         tabBarItemStyle: {
           paddingVertical: 5,
         },
-      }}
+        
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+        },
+        
+        headerShown: false,
+      })}
     >
       {/* Tab 1: Home */}
       <Tabs.Screen

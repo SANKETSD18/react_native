@@ -227,32 +227,32 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
   };
 
   const handleSubmit = async () => {
-    console.log("🔵 Submit clicked");
-    console.log("🔵 Role:", role);
-    console.log("🔵 Title:", title.trim());
-    console.log("🔵 Description:", description.trim());
-    console.log("🔵 Category:", category);
+    // console.log("🔵 Submit clicked");
+    // console.log("🔵 Role:", role);
+    // console.log("🔵 Title:", title.trim());
+    // console.log("🔵 Description:", description.trim());
+    // console.log("🔵 Category:", category);
 
     if (role !== "admin") {
-      console.log("🔴 Not admin");
+      // console.log("🔴 Not admin");
       onClose();
       setTimeout(() => {
-        console.log("🔴 Showing unauthorized alert");
+        // console.log("🔴 Showing unauthorized alert");
         Alert.alert("Unauthorized", "Only admins can add news");
       }, 100);
       return;
     }
 
     if (!title.trim() || !description.trim() || !category) {
-      console.log("🔴 Validation failed");
+      // console.log("🔴 Validation failed");
       setTimeout(() => {
-        console.log("🔴 Showing validation alert");
+        // console.log("🔴 Showing validation alert");
         Alert.alert("Validation Error", "Please fill all required fields.");
       }, 100);
       return;
     }
 
-    console.log("✅ Validation passed, starting upload...");
+    // console.log("✅ Validation passed, starting upload...");
 
     setUploading(true);
 
@@ -281,7 +281,7 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
             : `video-${timestamp}${extension}`;
 
         filePath = `${date}/${newsId}/${fileName}`;
-        console.log("Uploading to path:", filePath);
+        // console.log("Uploading to path:", filePath);
 
         publicURL = await uploadFileToBucket(
           picked.uri,

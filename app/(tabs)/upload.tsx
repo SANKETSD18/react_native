@@ -45,7 +45,8 @@ export default function PdfUploader() {
   const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filterCity, setFilterCity] = useState<string>("All");
-  const [initialLoading, setInitialLoading] = useState(true); // ✅ ADDED THIS
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [uploadSectionExpanded, setUploadSectionExpanded] = useState(false); // ✅ NEW STATE
 
   const fetchPDFs = useCallback(async () => {
     try {
@@ -63,7 +64,7 @@ export default function PdfUploader() {
     } catch (err) {
       console.error("Fetch PDFs exception:", err);
     } finally {
-      setInitialLoading(false);// jab se true hota hai to loading start ho jati hai, aur jab fetch complete ho jata hai to false kar dete hain
+      setInitialLoading(false);
     }
   }, []);
 
@@ -207,92 +208,114 @@ export default function PdfUploader() {
       </View>
 
       <View style={styles.content}>
-        {/* Admin Upload Section */}
+        {/* ✅ COLLAPSIBLE ADMIN UPLOAD SECTION */}
         {role === "admin" && (
           <View style={styles.uploadSection}>
-            <Text style={styles.sectionTitle}>
-              <Ionicons name="cloud-upload-outline" size={18} color="#C62828" /> Upload E-Paper
-            </Text>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                <Ionicons name="location-outline" size={14} color="#666" /> Select City
-              </Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={selectedCity}
-                  onValueChange={(itemValue) => setSelectedCity(itemValue)}
-                  style={styles.picker}
-                >
-                  {cities.map((city) => (
-                    <Picker.Item key={city} label={city} value={city} />
-                  ))}
-                </Picker>
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                <Ionicons name="calendar-outline" size={14} color="#666" /> Select Date
-              </Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Ionicons name="calendar" size={20} color="#C62828" />
-                <Text style={styles.dateButtonText}>{formatDate(selectedDate)}</Text>
-              </TouchableOpacity>
-
-              {showDatePicker && (
-                <DateTimePicker
-                  value={selectedDate}
-                  mode="date"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
-                  onChange={(event, date) => {
-                    setShowDatePicker(Platform.OS === "ios");
-                    if (date) setSelectedDate(date);
-                  }}
-                />
-              )}
-            </View>
-
+            {/* ✅ COLLAPSIBLE HEADER */}
             <TouchableOpacity
-              style={[styles.uploadButton, loading && styles.uploadButtonDisabled]}
-              onPress={uploadPDF}
-              disabled={loading}
+              onPress={() => setUploadSectionExpanded(!uploadSectionExpanded)}
+              style={styles.uploadSectionHeader}
+              activeOpacity={0.7}
             >
-              {loading ? (
-                <View style={styles.uploadingContainer}>
-                  <ActivityIndicator size="small" color="#fff" />
-                  <Text style={styles.uploadButtonText}>Uploading...</Text>
-                </View>
-              ) : (
-                <>
-                  <Ionicons name="cloud-upload" size={20} color="#fff" />
-                  <Text style={styles.uploadButtonText}>Upload PDF</Text>
-                </>
-              )}
+              <Text style={styles.sectionTitle}>
+                <Ionicons name="cloud-upload-outline" size={18} color="#C62828" /> Upload E-Paper
+              </Text>
+              <View style={styles.expandIndicator}>
+                <Text style={styles.expandText}>
+                  {uploadSectionExpanded ? "Collapse" : "Expand"}
+                </Text>
+                <Ionicons 
+                  name={uploadSectionExpanded ? "chevron-up" : "chevron-down"} 
+                  size={24} 
+                  color="#666" 
+                />
+              </View>
             </TouchableOpacity>
 
-            {message && (
-              <View style={[
-                styles.messageContainer,
-                message === "success" ? styles.messageSuccess : styles.messageError
-              ]}>
-                <Ionicons 
-                  name={message === "success" ? "checkmark-circle" : "alert-circle"} 
-                  size={20} 
-                  color={message === "success" ? "#2e7d32" : "#d32f2f"}
-                />
-                <Text style={[
-                  styles.messageText,
-                  message === "success" ? styles.messageSuccessText : styles.messageErrorText
-                ]}>
-                  {message === "success" 
-                    ? `${uploadedFileName} uploaded successfully!` 
-                    : message
-                  }
-                </Text>
+            {/* ✅ COLLAPSIBLE CONTENT */}
+            {uploadSectionExpanded && (
+              <View style={styles.uploadContent}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    <Ionicons name="location-outline" size={14} color="#666" /> Select City
+                  </Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={selectedCity}
+                      onValueChange={(itemValue) => setSelectedCity(itemValue)}
+                      style={styles.picker}
+                    >
+                      {cities.map((city) => (
+                        <Picker.Item key={city} label={city} value={city} />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    <Ionicons name="calendar-outline" size={14} color="#666" /> Select Date
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Ionicons name="calendar" size={20} color="#C62828" />
+                    <Text style={styles.dateButtonText}>{formatDate(selectedDate)}</Text>
+                  </TouchableOpacity>
+
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={selectedDate}
+                      mode="date"
+                      display={Platform.OS === "ios" ? "spinner" : "default"}
+                      onChange={(event, date) => {
+                        setShowDatePicker(Platform.OS === "ios");
+                        if (date) setSelectedDate(date);
+                      }}
+                    />
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.uploadButton, loading && styles.uploadButtonDisabled]}
+                  onPress={uploadPDF}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <View style={styles.uploadingContainer}>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={styles.uploadButtonText}>Uploading...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload" size={20} color="#fff" />
+                      <Text style={styles.uploadButtonText}>Upload PDF</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {message && (
+                  <View style={[
+                    styles.messageContainer,
+                    message === "success" ? styles.messageSuccess : styles.messageError
+                  ]}>
+                    <Ionicons 
+                      name={message === "success" ? "checkmark-circle" : "alert-circle"} 
+                      size={20} 
+                      color={message === "success" ? "#2e7d32" : "#d32f2f"}
+                    />
+                    <Text style={[
+                      styles.messageText,
+                      message === "success" ? styles.messageSuccessText : styles.messageErrorText
+                    ]}>
+                      {message === "success" 
+                        ? `${uploadedFileName} uploaded successfully!` 
+                        : message
+                      }
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -488,11 +511,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  // ✅ NEW COLLAPSIBLE STYLES
+  uploadSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  expandIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  expandText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+  },
+  uploadContent: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  // END NEW STYLES
+  
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#333",
-    marginBottom: 16,
   },
   inputGroup: {
     marginBottom: 16,
@@ -597,8 +643,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#333",
   },
-  
-  // ✅ NEW: Filter Styles
   filterSection: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -636,7 +680,6 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: "#fff",
   },
-  
   listSection: {
     flex: 1,
     backgroundColor: "#fff",
