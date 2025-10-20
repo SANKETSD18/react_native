@@ -101,7 +101,7 @@ export default function RootLayout() {
         Alert.alert("Error", "Unable to verify reset link.");
         router.replace("/forgot-password");
       } else {
-        await supabase.auth.signOut();
+        
         console.log("✅ Session set successfully");
         console.log("✅ User:", data.user?.email);
 
