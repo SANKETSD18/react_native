@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Stack, router, useLocalSearchParams } from "expo-router";
+import { Stack, router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabaseClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ResetPasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
@@ -22,14 +24,8 @@ export default function ResetPasswordScreen() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(""); // ✅ Hardware back button handler
 
-  const params = useLocalSearchParams();
-  const triggerKey = params.key;
-
-  console.log("ResetPassword component mounted");
-
-  // ✅ Hardware back button handler
   useEffect(() => {
     const backAction = () => {
       handleCancel();
@@ -44,56 +40,58 @@ export default function ResetPasswordScreen() {
     return () => backHandler.remove();
   }, []);
 
-  // ✅ Fetch email on mount
   useEffect(() => {
-    const fetchEmail = async () => {
+    let handled = false;
+    const handlePasswordRecovery = async () => {
+      if (handled) return;
+      handled = true;
+      console.log(
+        "🔑 Starting password recovery process reset-password handle password"
+      );
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user?.email) {
-          setEmail(user.email);
-          console.log("📧 User email:", user.email);
+        // Step 1: Get token from AsyncStorage
+        const storedToken = await AsyncStorage.getItem("reset_token");
+        console.log("🔑 Stored token:", storedToken);
+
+        if (!storedToken) {
+          console.log("⚠️ No token found in storage.");
+          return;
+        } // Step 2: Set Supabase session
+
+        console.log("🔑 Setting recovery session with token:", storedToken);
+        const { data, error } = await supabase.auth.setSession({
+          access_token: storedToken,
+          refresh_token: storedToken,
+        });
+
+        if (error) {
+          console.error("❌ Session error:", error);
+          console.log("✅ Session set successfully:", error);
+          Alert.alert(
+            "Link Expired",
+            "This password reset link is invalid or expired."
+          );
+
+          router.replace("/(tabs)");
+          return;
         }
-      } catch (err) {
-        console.error("❌ Email fetch error:", err);
-      }
-    };
 
-    fetchEmail();
-  }, [triggerKey]);
+        console.log("✅ Session set successfully:", data); // Step 3: Fetch user email
 
-
-
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        // Supabase से वर्तमान सेशन (Session) को प्राप्त करें
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session) {
-          console.log("🚨 WARNING: Active Session found on Reset Screen!");
-          console.log("User Email (Active):", session.user.email);
-          // अगर यह लॉग आता है, तो हाँ, ऑटो-लॉगिन एक्टिव सेशन के कारण हो रहा है।
-
-          // Fix के लिए: यहाँ फिर से साइन आउट करें
-          // await supabase.auth.signOut();
-          // console.log("Session forcefully removed.");
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user?.email) {
+          setEmail(userData.user.email);
+          console.log("📧 User email:", userData.user.email);
         } else {
-          console.log("✅ No active session found. Good.");
+          console.log("⚠️ No user email found after session creation.");
         }
       } catch (err) {
-        console.error("❌ Session check error:", err);
+        console.error("❌ Password recovery error:", err);
       }
     };
+    handlePasswordRecovery();
+  }, []); // ✅ Cancel handler - properly sign out
 
-    // fetchEmail के साथ या उसके बाद इसे कॉल करें
-    checkSession(); //
-  }, [triggerKey]);
-
-  // ✅ Cancel handler - properly sign out
   const handleCancel = () => {
     Alert.alert(
       "Cancel Password Reset?",
@@ -105,8 +103,7 @@ export default function ResetPasswordScreen() {
           style: "destructive",
           onPress: async () => {
             console.log("🚪 Logging out...");
-            await supabase.auth.signOut();
-            // ✅ Small delay to ensure logout completes
+            await supabase.auth.signOut(); // ✅ Small delay to ensure logout completes
             setTimeout(() => {
               router.replace("/(tabs)"); // Or your login route
             }, 200);
@@ -121,9 +118,8 @@ export default function ResetPasswordScreen() {
     const trimmedConfirm = confirmPassword.trim();
 
     console.log("🔐 Password update initiated");
-    console.log("click");
+    console.log("click"); // ✅ Validation
 
-    // ✅ Validation
     if (!trimmedNewPassword || !trimmedConfirm) {
       return Alert.alert("Error", "Please fill all fields");
     }
@@ -148,9 +144,8 @@ export default function ResetPasswordScreen() {
           () => reject(new Error("Request timeout - check your internet")),
           10000
         )
-      );
+      ); // ✅ Check session first
 
-      // ✅ Check session first
       const {
         data: { session },
         error: sessionError,
@@ -159,22 +154,23 @@ export default function ResetPasswordScreen() {
       console.log("🔑 Session exists:", !!session);
       console.log("👤 Session user:", session?.user?.email);
 
-      // if (!session) {
-      //   setLoading(false);
-      //   return Alert.alert(
-      //     "Session Expired",
-      //     "Your reset link has expired. Please request a new one.",
-      //     [{
-      //       text: "OK",
-      //       onPress: async () => {
-      //         await supabase.auth.signOut();
-      //         router.replace("/forgot-password");
-      //       }
-      //     }]
-      //   );
-      // }
+      if (!session) {
+        setLoading(false);
+        return Alert.alert(
+          "Session Expired",
+          "Your reset link has expired. Please request a new one.",
+          [
+            {
+              text: "OK",
+              onPress: async () => {
+                await supabase.auth.signOut();
+                router.replace("/forgot-password");
+              },
+            },
+          ]
+        );
+      } // ✅ Update password with timeout
 
-      // ✅ Update password with timeout
       console.log("🔄 Updating password...");
 
       const updatePromise = supabase.auth.updateUser({
@@ -198,9 +194,8 @@ export default function ResetPasswordScreen() {
           "Update Failed",
           error.message || "Failed to update password"
         );
-      }
+      } // ✅ Success - Sign out and redirect to login
 
-      // ✅ Success - Sign out and redirect to login
       console.log("🎉 Password updated successfully!");
 
       Alert.alert(
@@ -260,7 +255,6 @@ export default function ResetPasswordScreen() {
           <View style={styles.iconContainer}>
             <Ionicons name="key-outline" size={80} color="#C62828" />
           </View>
-
           <Text style={styles.title}>Create New Password</Text>
           <Text style={styles.subtitle}>
             Enter a new password for your account
@@ -277,6 +271,7 @@ export default function ResetPasswordScreen() {
             <View style={styles.inputIconContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="#999" />
             </View>
+
             <TextInput
               style={styles.input}
               placeholder="New password"
@@ -287,6 +282,7 @@ export default function ResetPasswordScreen() {
               onChangeText={setNewPassword}
               editable={!loading}
             />
+
             <TouchableOpacity
               style={styles.passwordToggle}
               onPress={() => setShowNewPassword(!showNewPassword)}
@@ -304,6 +300,7 @@ export default function ResetPasswordScreen() {
             <View style={styles.inputIconContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="#999" />
             </View>
+
             <TextInput
               style={styles.input}
               placeholder="Confirm new password"
@@ -314,6 +311,7 @@ export default function ResetPasswordScreen() {
               onChangeText={setConfirmPassword}
               editable={!loading}
             />
+
             <TouchableOpacity
               style={styles.passwordToggle}
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -329,14 +327,18 @@ export default function ResetPasswordScreen() {
 
           <View style={styles.requirementsBox}>
             <Text style={styles.requirementsTitle}>Password must:</Text>
+
             <View style={styles.requirement}>
               <Ionicons name="checkmark-circle" size={16} color="#2e7d32" />
+
               <Text style={styles.requirementText}>
                 Be at least 6 characters long
               </Text>
             </View>
+
             <View style={styles.requirement}>
               <Ionicons name="checkmark-circle" size={16} color="#2e7d32" />
+
               <Text style={styles.requirementText}>Match in both fields</Text>
             </View>
           </View>
@@ -362,6 +364,7 @@ export default function ResetPasswordScreen() {
                   size={20}
                   color="#fff"
                 />
+
                 <Text style={styles.submitButtonText}>Reset Password</Text>
               </>
             )}

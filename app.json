@@ -8,13 +8,13 @@
     "scheme": "pradesh-times",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sanket.pradeshtimes",
       "associatedDomains": ["applinks:pradeshtimes.app"]
     },
-    
+
     "android": {
       "package": "com.sanket.pradeshtimes",
       "adaptiveIcon": {
@@ -22,32 +22,40 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
+
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
-              "scheme": "pradeshtimes",
-              "host": "*"
+              "scheme": "pradesh-times",
+              "host": "reset-password"
+            },
+            {
+              "scheme": "pradesh-times",
+              "host": "forgot-password"
+            },
+            {
+              "scheme": "pradesh-times"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
-    
+
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    
+
     "plugins": [
       [
         "expo-router",
         {
-          "origin": "pradeshtimes://"
+          "origin": "pradesh-times:/"
         }
       ],
       [
@@ -61,7 +69,7 @@
       ],
       "expo-video"
     ],
-    
+
     "experiments": {
       "typedRoutes": true
     }

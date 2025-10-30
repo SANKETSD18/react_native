@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -41,6 +41,7 @@ export default function ForgotPasswordScreen() {
         }
       );
 
+      console.log("📨 Reset mail triggered to:", trimmedEmail);
       console.log("Response:", data);
       console.log("Error:", error);
       setLoading(false);
