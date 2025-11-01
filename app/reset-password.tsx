@@ -24,7 +24,7 @@ export default function ResetPasswordScreen() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState(""); // ✅ Hardware back button handler
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     const backAction = () => {
@@ -41,43 +41,37 @@ export default function ResetPasswordScreen() {
   }, []);
 
   useEffect(() => {
-    let handled = false;
     const handlePasswordRecovery = async () => {
-      if (handled) return;
-      handled = true;
       console.log(
         "🔑 Starting password recovery process reset-password handle password"
       );
+
       try {
-        // Step 1: Get token from AsyncStorage
+        // Step 1: Get token
         const storedToken = await AsyncStorage.getItem("reset_token");
-        console.log("🔑 Stored token:", storedToken);
+        const authEvent = await AsyncStorage.getItem("auth_event");
+
+        // ⚠️ Prevent infinite loop
+        if (authEvent === "PASSWORD_RECOVERY") {
+          console.log(
+            "🌀 Already in PASSWORD_RECOVERY mode, skipping redirect..."
+          );
+          return;
+        }
 
         if (!storedToken) {
           console.log("⚠️ No token found in storage.");
           return;
-        } // Step 2: Set Supabase session
-
-        console.log("🔑 Setting recovery session with token:", storedToken);
-        const { data, error } = await supabase.auth.setSession({
-          access_token: storedToken,
-          refresh_token: storedToken,
-        });
-
-        if (error) {
-          console.error("❌ Session error:", error);
-          console.log("✅ Session set successfully:", error);
-          Alert.alert(
-            "Link Expired",
-            "This password reset link is invalid or expired."
-          );
-
-          router.replace("/(tabs)");
-          return;
         }
 
-        console.log("✅ Session set successfully:", data); // Step 3: Fetch user email
+        console.log("🔑 Setting recovery session with token:", storedToken);
+        await AsyncStorage.setItem("auth_event", "PASSWORD_RECOVERY");
+        console.log("💾 PASSWORD_RECOVERY mode activated ✅");
 
+        // ✅ Redirect only once
+        router.replace("/reset-password");
+
+        // Optional: Fetch user email
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user?.email) {
           setEmail(userData.user.email);
@@ -89,9 +83,11 @@ export default function ResetPasswordScreen() {
         console.error("❌ Password recovery error:", err);
       }
     };
-    handlePasswordRecovery();
-  }, []); // ✅ Cancel handler - properly sign out
 
+    handlePasswordRecovery();
+  }, []);
+
+  // ✅ Cancel handler - properly sign out
   const handleCancel = () => {
     Alert.alert(
       "Cancel Password Reset?",
@@ -118,7 +114,7 @@ export default function ResetPasswordScreen() {
     const trimmedConfirm = confirmPassword.trim();
 
     console.log("🔐 Password update initiated");
-    console.log("click"); // ✅ Validation
+    // console.log("click"); // ✅ Validation
 
     if (!trimmedNewPassword || !trimmedConfirm) {
       return Alert.alert("Error", "Please fill all fields");
@@ -197,6 +193,9 @@ export default function ResetPasswordScreen() {
       } // ✅ Success - Sign out and redirect to login
 
       console.log("🎉 Password updated successfully!");
+      await AsyncStorage.removeItem("auth_event");
+      await AsyncStorage.removeItem("reset_token");
+      console.log("🧹 Cleared PASSWORD_RECOVERY data after reset ✅");
 
       Alert.alert(
         "Success! 🎉",

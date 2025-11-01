@@ -3,10 +3,10 @@ import AuthProvider from "../app/providers/AuthProvider";
 import { useEffect, useState } from "react";
 import * as Linking from "expo-linking";
 import { usePathname } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // ✅ add this
+// import { supabase } from "../lib/supabaseClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function RootLayout() {
-  const [isReady, setIsReady] = useState(false);
   const path = usePathname();
 
   // ✅ Just for debug
@@ -17,60 +17,61 @@ export default function RootLayout() {
   }, [path]);
 
   useEffect(() => {
-    const testDeepLink = async () => {
-      const initialUrl = await Linking.getInitialURL();
-      console.log("🔗 Initial URL raw:", initialUrl);
+    const handleDeepLink = async (url: string) => {
+      console.log("🔗 Handling link:", url);
+      if (!url) return;
 
-      if (!initialUrl) {
-        console.log("🟡 App opened normally (no deep link)");
-        setIsReady(true);
-        return;
-      }
-
-      let fixedUrl = initialUrl;
-
-      // ✅ Remove exp+ if present (Expo dev build prefix)
-      if (initialUrl.startsWith("exp+pradesh-times://")) {
-        fixedUrl = initialUrl.replace("exp+", "");
-      }
-
-      // ✅ Replace # with ? for proper parsing
+      let fixedUrl = url;
       if (fixedUrl.includes("#")) {
         const [base, hash] = fixedUrl.split("#");
         fixedUrl = `${base}?${hash}`;
       }
 
-      const parsed = Linking.parse(fixedUrl);
-      console.log("📍 Parsed URL:", JSON.stringify(parsed, null, 2));
+      try {
+        const parsed = Linking.parse(fixedUrl);
+        console.log("🧩 Parsed link printed ✅", parsed);
 
-      const path = parsed.path || "(none)";
-      const query = parsed.queryParams || {};
-      const rawToken = query.token || query.access_token || "(no token)";
-      const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+        const { access_token, type } = parsed.queryParams || {};
+        const token = access_token as string | undefined;
+        const flowType = type as string | undefined;
 
-      const type = query.type || "(no type)";
+        if (token && flowType === "recovery") {
+          console.log("🔑 Token mila ✅", token, "Type:", flowType);
+          await AsyncStorage.setItem("reset_token", token);
+          await AsyncStorage.setItem("auth_event", "PASSWORD_RECOVERY");
+          console.log("💾 Token + PASSWORD_RECOVERY saved ✅");
+        } else {
+          console.log("🚫 Token ya type nahi mila");
+        }
 
-      console.log("✅ Extracted values:", { path, token, type });
-
-      // ✅ Save token for ResetPasswordScreen
-      if (path === "reset-password" && token && token !== "(no token)") {
-        console.log("💾 Saving token to AsyncStorage...");
-        await AsyncStorage.setItem("reset_token", token);
-        console.log("✅ Token saved successfully.");
-
-        console.log("🔑 Navigating to reset-password screen...");
-        router.replace({
-          pathname: "/reset-password",
-          params: { type },
-        });
+        console.log("🔚 HandleDeepLink finished ✅");
+      } catch (err) {
+        console.log("❌ Error while parsing link:", err);
       }
-      setIsReady(true);
     };
 
-    testDeepLink();
-  }, []);
+    // ✅ Listen when app is already running
+    const subscription = Linking.addEventListener("url", (event) => {
+      console.log("📩 Deep link received while running:", event.url);
+      handleDeepLink(event.url);
+    });
 
-  if (!isReady) return null;
+    // ✅ Handle link when app opened from cold start
+    (async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        console.log("🚀 App opened via deep link:", initialUrl);
+        await handleDeepLink(initialUrl);
+      } else {
+        console.log("🕵️‍♂️ No initial URL found (normal app start).");
+      }
+    })();
+
+    // ✅ Cleanup listener
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
     <AuthProvider>
