@@ -1,16 +1,17 @@
-import { User, Session } from "@supabase/supabase-js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Session, User } from "@supabase/supabase-js";
+import { router } from "expo-router";
 import {
   createContext,
   ReactNode,
   useContext,
   useEffect,
   useState,
+  useRef,
 } from "react";
+import { useDeepLink } from "../../context/DeepLinkContext";
 import { supabase } from "../../lib/supabaseClient";
-import { router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ✅ Context type - session added
 type AuthContextType = {
   user: User | null;
   session: Session | null;
@@ -24,11 +25,14 @@ type AuthProviderProps = {
 };
 
 const AuthProvider = ({ children }: AuthProviderProps) => {
+  const { isDeepLinkChecked, isRecoveryMode, setIsRecoveryMode } = useDeepLink();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  
+  // ✅ Track if we're currently in password reset flow
+  const isResettingPassword = useRef(false);
 
-  // ✅ Fetch role function
   const fetchRole = async (email: string) => {
     try {
       const { data: profileData, error } = await supabase
@@ -42,7 +46,6 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
         return "user";
       }
 
-      // console.log("👤 User role:", profileData?.role);
       return profileData?.role || "user";
     } catch (err) {
       console.error("❌ Role fetch exception:", err);
@@ -52,21 +55,23 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // ✅ Initialize auth on mount
   useEffect(() => {
+    if (!isDeepLinkChecked) return;
+
     const initAuth = async () => {
-      // console.log("🔐 Initializing auth...");
+      console.log("🔐 Initializing auth...");
 
       const {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
 
-      if (currentSession?.user) {
-        // console.log("✅ Found existing session:", currentSession.user.email);
+      if (currentSession?.user && !isRecoveryMode) {
+        console.log("✅ Found existing session:", currentSession.user.email);
         setSession(currentSession);
         setUser(currentSession.user);
         const userRole = await fetchRole(currentSession.user.email || "");
         setRole(userRole);
       } else {
-        // console.log("❌ No existing session");
+        console.log("❌ No existing session or in recovery mode");
         setSession(null);
         setUser(null);
         setRole(null);
@@ -74,76 +79,79 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
     };
 
     initAuth();
-  }, []);
+  }, [isDeepLinkChecked]);
 
-  // ✅ Auth state listener
+  // ✅ Auth state listener with proper recovery mode handling
   useEffect(() => {
+    console.log("🎯 Setting up auth listener. Recovery mode:", isRecoveryMode);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("🔔 Auth event:", event);
+      console.log("🔔 Auth event:", event, "| Recovery mode:", isRecoveryMode);
 
-      // ✅ PASSWORD_RECOVERY - Don't navigate
-      const savedEvent = await AsyncStorage.getItem("auth_event");
-      console.log("🗂️  local storage se Saved auth_event:", savedEvent);
-      if (savedEvent === "PASSWORD_RECOVERY" || event === "PASSWORD_RECOVERY") {
-        console.log("🔑 auth page Password recovery in progress...");
-        setSession(currentSession);
-        const userRole = await fetchRole(currentSession?.user.email || "");
-        setRole(userRole);
-        if (currentSession?.user) {
-          setUser(currentSession?.user);
-        }
+      // ✅ PASSWORD_RECOVERY or SIGNED_IN during recovery - DON'T navigate
+      if (isRecoveryMode && (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY")) {
+        console.log("🔒 Recovery mode: Blocking navigation for", event);
+        setSession(currentSession || null);
+        setUser(currentSession?.user || null);
+        isResettingPassword.current = true;
+        return; // ✅ Don't proceed further
+      }
+
+      // ✅ USER_UPDATED during password reset - DON'T navigate
+      if (event === "USER_UPDATED" && isResettingPassword.current) {
+        console.log("🔄 User updated during password reset - skipping navigation");
+        setSession(currentSession || null);
+        setUser(currentSession?.user || null);
+        // Don't navigate, password reset screen will handle it
         return;
       }
 
-      // ✅ SIGNED_IN - User logged in
-      if (event === "SIGNED_IN" && currentSession?.user) {
+      // ✅ Normal SIGNED_IN - User logged in (not recovery)
+      if (event === "SIGNED_IN" && currentSession?.user && !isRecoveryMode) {
+        console.log("✅ Normal sign in - navigating to tabs");
         setSession(currentSession);
         setUser(currentSession.user);
-
         const userRole = await fetchRole(currentSession.user.email || "");
         setRole(userRole);
+        router.replace("/(tabs)");
+      }
 
-        // ✅ BLOCK: Only navigate to tabs if NOT in recovery
+      // ✅ SIGNED_OUT - User logged out
+      if (event === "SIGNED_OUT") {
+        console.log("👋 User signed out");
+        setSession(null);
+        setUser(null);
+        setRole(null);
+        isResettingPassword.current = false;
+        setIsRecoveryMode(false);
 
         setTimeout(() => {
           router.replace("/(tabs)");
         }, 100);
       }
 
-      // ✅ SIGNED_OUT - User logged out
-      if (event === "SIGNED_OUT") {
-        setSession(null);
-        setUser(null);
-        setRole(null);
-
-        // Navigate to login screen after reset/cancel
-        setTimeout(() => {
-          router.replace("/(tabs)"); // ya "/" ya login screen ke route par
-        }, 100);
-      }
-
-      // ✅ TOKEN_REFRESHED - Update session
+      // ✅ TOKEN_REFRESHED - Just update session, no navigation
       if (event === "TOKEN_REFRESHED" && currentSession?.user) {
-        // console.log("🔄 Token refreshed");
+        console.log("🔄 Token refreshed");
         setSession(currentSession);
         setUser(currentSession.user);
       }
 
-      // ✅ USER_UPDATED - Update user
-      if (event === "USER_UPDATED" && currentSession?.user) {
-        // console.log("🔄 User updated");
+      // ✅ Normal USER_UPDATED (not during password reset)
+      if (event === "USER_UPDATED" && currentSession?.user && !isResettingPassword.current) {
+        console.log("🔄 User profile updated");
         setSession(currentSession);
         setUser(currentSession.user);
       }
     });
 
     return () => {
-      // console.log("🧹 Cleaning up auth subscription");
+      console.log("🧹 Cleaning up auth subscription");
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isRecoveryMode]); // ✅ Add isRecoveryMode as dependency
 
   return (
     <AuthContext.Provider value={{ user, session, role }}>

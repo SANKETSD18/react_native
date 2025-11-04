@@ -1,11 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Stack, router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabaseClient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useDeepLink } from "../context/DeepLinkContext";
 
 export default function ResetPasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
@@ -25,10 +25,23 @@ export default function ResetPasswordScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
-
+  const { access_token, refresh_token, type } = useLocalSearchParams();
+  const { setIsRecoveryMode } = useDeepLink();
+  // console.log(
+  //   "🔑 ResetPasswordScreen param:",
+  //   refresh_token,
+  //   access_token,
+  //   type
+  // );
+  useEffect(() => {
+    if (type === "recovery") {
+      setIsRecoveryMode(true); // ✅ before calling setSession
+    }
+  }, [type]);
   useEffect(() => {
     const backAction = () => {
       handleCancel();
+
       return true; // Prevent default back
     };
 
@@ -41,51 +54,58 @@ export default function ResetPasswordScreen() {
   }, []);
 
   useEffect(() => {
-    const handlePasswordRecovery = async () => {
-      console.log(
-        "🔑 Starting password recovery process reset-password handle password"
-      );
+    if (!access_token || !refresh_token || !type) {
+      console.log("⏸️ Missing params, waiting...");
+      return;
+    }
+
+    console.log("🚀 Params received:", { type });
+    const initSession = async () => {
+      if (type !== "recovery") {
+        console.log("⏩ Not a recovery link");
+        return;
+      }
 
       try {
-        // Step 1: Get token
-        const storedToken = await AsyncStorage.getItem("reset_token");
-        const authEvent = await AsyncStorage.getItem("auth_event");
+        console.log("🚀 Setting recovery session...");
 
-        // ⚠️ Prevent infinite loop
-        if (authEvent === "PASSWORD_RECOVERY") {
-          console.log(
-            "🌀 Already in PASSWORD_RECOVERY mode, skipping redirect..."
+        // ✅ Session set karo SIRF ek baar
+        const { data, error } = await supabase.auth.setSession({
+          access_token: access_token as string,
+          refresh_token: refresh_token as string,
+        });
+
+        if (error) {
+          console.error("❌ Session error:", error.message);
+          Alert.alert(
+            "Invalid Link",
+            "This reset link is invalid or expired. Please request a new one.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/forgot-password"),
+              },
+            ]
           );
           return;
         }
 
-        if (!storedToken) {
-          console.log("⚠️ No token found in storage.");
+        if (!data.session) {
+          console.log("🚪 No session created");
+          router.replace("/forgot-password");
           return;
         }
 
-        console.log("🔑 Setting recovery session with token:", storedToken);
-        await AsyncStorage.setItem("auth_event", "PASSWORD_RECOVERY");
-        console.log("💾 PASSWORD_RECOVERY mode activated ✅");
-
-        // ✅ Redirect only once
-        router.replace("/reset-password");
-
-        // Optional: Fetch user email
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user?.email) {
-          setEmail(userData.user.email);
-          console.log("📧 User email:", userData.user.email);
-        } else {
-          console.log("⚠️ No user email found after session creation.");
-        }
+        console.log("✅ Session active:", data.session.user.email);
+        setEmail(data.session.user.email || "");
       } catch (err) {
-        console.error("❌ Password recovery error:", err);
+        console.error("❌ Session init error:", err);
+        Alert.alert("Error", "Failed to initialize password reset");
       }
     };
 
-    handlePasswordRecovery();
-  }, []);
+    initSession();
+  }, [access_token, refresh_token, type]);
 
   // ✅ Cancel handler - properly sign out
   const handleCancel = () => {
@@ -99,6 +119,7 @@ export default function ResetPasswordScreen() {
           style: "destructive",
           onPress: async () => {
             console.log("🚪 Logging out...");
+            await AsyncStorage.removeItem("auth_event");
             await supabase.auth.signOut(); // ✅ Small delay to ensure logout completes
             setTimeout(() => {
               router.replace("/(tabs)"); // Or your login route
@@ -113,9 +134,7 @@ export default function ResetPasswordScreen() {
     const trimmedNewPassword = newPassword.trim();
     const trimmedConfirm = confirmPassword.trim();
 
-    console.log("🔐 Password update initiated");
-    // console.log("click"); // ✅ Validation
-
+    // Validations
     if (!trimmedNewPassword || !trimmedConfirm) {
       return Alert.alert("Error", "Please fill all fields");
     }
@@ -127,103 +146,78 @@ export default function ResetPasswordScreen() {
     if (trimmedNewPassword.length < 6) {
       return Alert.alert(
         "Weak Password",
-        "Password must be at least 6 characters long"
+        "Password must be at least 6 characters"
       );
     }
 
     setLoading(true);
 
     try {
-      // ✅ Add timeout for API call (10 seconds)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Request timeout - check your internet")),
-          10000
-        )
-      ); // ✅ Check session first
-
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      console.log("🔑 Session exists:", !!session);
-      console.log("👤 Session user:", session?.user?.email);
-
-      if (!session) {
-        setLoading(false);
-        return Alert.alert(
-          "Session Expired",
-          "Your reset link has expired. Please request a new one.",
-          [
-            {
-              text: "OK",
-              onPress: async () => {
-                await supabase.auth.signOut();
-                router.replace("/forgot-password");
-              },
-            },
-          ]
-        );
-      } // ✅ Update password with timeout
-
       console.log("🔄 Updating password...");
 
-      const updatePromise = supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         password: trimmedNewPassword,
       });
 
-      const { data, error } = (await Promise.race([
-        updatePromise,
-        timeoutPromise,
-      ])) as any;
+      if (error) {
+        console.error("❌ Update error:", error.message);
+        setLoading(false);
 
-      console.log("✅ Update complete");
-      console.log("Response:", data);
-      console.log("Error:", error);
+        if (
+          error.message.includes("expired") ||
+          error.message.includes("invalid")
+        ) {
+          return Alert.alert(
+            "Link Expired",
+            "Your reset link has expired. Please request a new one.",
+            [
+              {
+                text: "OK",
+                onPress: async () => {
+                  await supabase.auth.signOut();
+                  setIsRecoveryMode(false); // ✅ Recovery mode off
+                  router.replace("/forgot-password");
+                },
+              },
+            ]
+          );
+        }
+
+        return Alert.alert("Update Failed", error.message);
+      }
+
+      // ✅ Success - Small delay to ensure auth events settle
+      console.log("🎉 Password updated successfully!");
+
+      // ✅ Wait for auth events to complete
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       setLoading(false);
 
-      if (error) {
-        console.error("❌ Update error:", error);
-        return Alert.alert(
-          "Update Failed",
-          error.message || "Failed to update password"
-        );
-      } // ✅ Success - Sign out and redirect to login
-
-      console.log("🎉 Password updated successfully!");
-      await AsyncStorage.removeItem("auth_event");
-      await AsyncStorage.removeItem("reset_token");
-      console.log("🧹 Cleared PASSWORD_RECOVERY data after reset ✅");
-
       Alert.alert(
         "Success! 🎉",
-        "Your password has been reset successfully. Please login with your new password.",
+        "Your password has been reset. Please login with your new password.",
         [
           {
             text: "Login Now",
             onPress: async () => {
+              console.log("🚪 Signing out after password reset...");
+              setIsRecoveryMode(false); // ✅ Turn off recovery mode first
               await supabase.auth.signOut();
+
+              // ✅ Small delay before navigation
               setTimeout(() => {
-                router.replace("/(tabs)"); // Your login route
-              }, 200);
+                router.replace("/(tabs)");
+              }, 300);
             },
           },
-        ]
+        ],
+        { cancelable: false } // ✅ Prevent dismissing alert accidentally
       );
     } catch (err: any) {
-      console.error("❌ Catch error:", err);
+      console.error("❌ Unexpected error:", err);
       setLoading(false);
-
-      if (err.message.includes("timeout")) {
-        Alert.alert(
-          "Network Error",
-          "Request timed out. Please check your internet connection and try again."
-        );
-      } else {
-        Alert.alert("Error", err.message || "Something went wrong");
-      }
+      Alert.alert("Error", err.message || "Something went wrong");
     }
   };
 

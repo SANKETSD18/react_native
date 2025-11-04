@@ -1,15 +1,14 @@
-import { router, Stack } from "expo-router";
-import AuthProvider from "../app/providers/AuthProvider";
-import { useEffect, useState } from "react";
 import * as Linking from "expo-linking";
-import { usePathname } from "expo-router";
-// import { supabase } from "../lib/supabaseClient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router, Stack, usePathname } from "expo-router";
+import { useEffect } from "react";
+import AuthProvider from "../app/providers/AuthProvider";
+import { DeepLinkProvider, useDeepLink } from "../context/DeepLinkContext";
 
-export default function RootLayout() {
+
+function AppContent() {
   const path = usePathname();
+  const { setIsDeepLinkChecked, setIsRecoveryMode } = useDeepLink();
 
-  // ✅ Just for debug
   useEffect(() => {
     const scheme = Linking.createURL("");
     const full = `${scheme.replace(/\/$/, "")}${path}`;
@@ -29,34 +28,39 @@ export default function RootLayout() {
 
       try {
         const parsed = Linking.parse(fixedUrl);
-        console.log("🧩 Parsed link printed ✅", parsed);
+        // console.log("🧩 Parsed link printed ✅", parsed);
 
         const { access_token, type } = parsed.queryParams || {};
         const token = access_token as string | undefined;
         const flowType = type as string | undefined;
+        const refresh_token = parsed.queryParams?.refresh_token as
+          | string
+          | undefined;
 
-        if (token && flowType === "recovery") {
-          console.log("🔑 Token mila ✅", token, "Type:", flowType);
-          await AsyncStorage.setItem("reset_token", token);
-          await AsyncStorage.setItem("auth_event", "PASSWORD_RECOVERY");
-          console.log("💾 Token + PASSWORD_RECOVERY saved ✅");
-        } else {
-          console.log("🚫 Token ya type nahi mila");
+        if (token && refresh_token && flowType === "recovery") {
+          setIsRecoveryMode(true);
+          console.log("🔑 token and refesh token", token, refresh_token);
+
+          const resetUrl = `/reset-password?access_token=${encodeURIComponent(
+            token
+          )}&refresh_token=${encodeURIComponent(refresh_token)}&type=recovery`;
+
+          router.replace(resetUrl as `/reset-password?${string}`);
         }
 
-        console.log("🔚 HandleDeepLink finished ✅");
+        setIsDeepLinkChecked(true);
       } catch (err) {
         console.log("❌ Error while parsing link:", err);
       }
     };
 
-    // ✅ Listen when app is already running
+    // ✅ Listen for links when app is running
     const subscription = Linking.addEventListener("url", (event) => {
       console.log("📩 Deep link received while running:", event.url);
       handleDeepLink(event.url);
     });
 
-    // ✅ Handle link when app opened from cold start
+    // ✅ Handle link when app opens first time
     (async () => {
       const initialUrl = await Linking.getInitialURL();
       if (initialUrl) {
@@ -64,10 +68,10 @@ export default function RootLayout() {
         await handleDeepLink(initialUrl);
       } else {
         console.log("🕵️‍♂️ No initial URL found (normal app start).");
+        setIsDeepLinkChecked(true);
       }
     })();
 
-    // ✅ Cleanup listener
     return () => {
       subscription.remove();
     };
@@ -81,5 +85,14 @@ export default function RootLayout() {
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
       </Stack>
     </AuthProvider>
+  );
+}
+
+// ✅ Yeh hi default export hai
+export default function RootLayout() {
+  return (
+    <DeepLinkProvider>
+      <AppContent />
+    </DeepLinkProvider>
   );
 }
