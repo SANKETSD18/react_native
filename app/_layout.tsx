@@ -3,6 +3,7 @@ import { router, Stack, usePathname } from "expo-router";
 import { useEffect } from "react";
 import AuthProvider from "../app/providers/AuthProvider";
 import { DeepLinkProvider, useDeepLink } from "../context/DeepLinkContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 function AppContent() {
@@ -38,8 +39,15 @@ function AppContent() {
           | undefined;
 
         if (token && refresh_token && flowType === "recovery") {
+          
+          await AsyncStorage.setItem("is_recovery_mode", "true");
+          
           setIsRecoveryMode(true);
+
+
+
           console.log("🔑 token and refesh token", token, refresh_token);
+
 
           const resetUrl = `/reset-password?access_token=${encodeURIComponent(
             token

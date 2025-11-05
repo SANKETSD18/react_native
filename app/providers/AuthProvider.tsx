@@ -25,11 +25,12 @@ type AuthProviderProps = {
 };
 
 const AuthProvider = ({ children }: AuthProviderProps) => {
-  const { isDeepLinkChecked, isRecoveryMode, setIsRecoveryMode } = useDeepLink();
+  const { isDeepLinkChecked, isRecoveryMode, setIsRecoveryMode } =
+    useDeepLink();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<string | null>(null);
-  
+
   // ✅ Track if we're currently in password reset flow
   const isResettingPassword = useRef(false);
 
@@ -60,6 +61,30 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
     const initAuth = async () => {
       console.log("🔐 Initializing auth...");
 
+      // ✅ Step 1: Check if recovery flag exists
+      const recoveryFlag = await AsyncStorage.getItem("is_recovery_mode");
+
+      if (recoveryFlag === "true") {
+        console.log("🧹 Recovery flag found → clearing session...");
+
+        // Clear session for safety
+        await supabase.auth.signOut();
+
+        // Remove flag so it doesn’t repeat after another reload
+        await AsyncStorage.removeItem("is_recovery_mode");
+
+        // Reset context flag
+        setIsRecoveryMode(false);
+
+        // Make sure state reflects logout
+        setSession(null);
+        setUser(null);
+        setRole(null);
+
+        return; // ✅ Stop here (don’t auto-login)
+      }
+
+      // ✅ Step 2: Normal flow (if not in recovery)
       const {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
@@ -91,7 +116,10 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log("🔔 Auth event:", event, "| Recovery mode:", isRecoveryMode);
 
       // ✅ PASSWORD_RECOVERY or SIGNED_IN during recovery - DON'T navigate
-      if (isRecoveryMode && (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY")) {
+      if (
+        isRecoveryMode &&
+        (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY")
+      ) {
         console.log("🔒 Recovery mode: Blocking navigation for", event);
         setSession(currentSession || null);
         setUser(currentSession?.user || null);
@@ -101,7 +129,9 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // ✅ USER_UPDATED during password reset - DON'T navigate
       if (event === "USER_UPDATED" && isResettingPassword.current) {
-        console.log("🔄 User updated during password reset - skipping navigation");
+        console.log(
+          "🔄 User updated during password reset - skipping navigation"
+        );
         setSession(currentSession || null);
         setUser(currentSession?.user || null);
         // Don't navigate, password reset screen will handle it
@@ -140,7 +170,11 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       // ✅ Normal USER_UPDATED (not during password reset)
-      if (event === "USER_UPDATED" && currentSession?.user && !isResettingPassword.current) {
+      if (
+        event === "USER_UPDATED" &&
+        currentSession?.user &&
+        !isResettingPassword.current
+      ) {
         console.log("🔄 User profile updated");
         setSession(currentSession);
         setUser(currentSession.user);
