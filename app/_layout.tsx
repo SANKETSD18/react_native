@@ -4,11 +4,34 @@ import { useEffect } from "react";
 import AuthProvider from "../app/providers/AuthProvider";
 import { DeepLinkProvider, useDeepLink } from "../context/DeepLinkContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { supabase } from "@/lib/supabaseClient";
 
 function AppContent() {
   const path = usePathname();
   const { setIsDeepLinkChecked, setIsRecoveryMode } = useDeepLink();
+    useEffect(() => {
+    const checkRecoveryOnReload = async () => {
+      const isRecovery = await AsyncStorage.getItem("is_recovery");
+
+      if (isRecovery === "true") {
+        console.log("♻️ App reload detected during recovery - clearing session");
+
+        // clear temp recovery flag first
+        await AsyncStorage.removeItem("is_recovery");
+
+        try {
+          await supabase.auth.signOut();
+          setIsRecoveryMode(false);
+          router.replace("/forgot-password"); // navigate safely
+          console.log("🚪 Recovery session cleared successfully");
+        } catch (err) {
+          console.error("❌ Error clearing recovery session:", err);
+        }
+      }
+    };
+
+    checkRecoveryOnReload();
+  }, []);
 
   useEffect(() => {
     const scheme = Linking.createURL("");
@@ -104,3 +127,4 @@ export default function RootLayout() {
     </DeepLinkProvider>
   );
 }
+
