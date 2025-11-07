@@ -1,27 +1,12 @@
-import { Tabs, router } from "expo-router";
+import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Platform, View } from "react-native";
 import { useAuth } from "../providers/AuthProvider";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect } from "react";
+
+
 export default function TabLayout() {
   const { role } = useAuth();
-  useEffect(() => {
-    const handlePendingDeepLink = async () => {
-      const id = await AsyncStorage.getItem("highlighted_news_id");
-      if (id) {
-        console.log("🟢 Tabs ready, navigating to /news:", id);
-
-        // navigate to news tab
-        router.push("/news");
-
-        // optional: clear once used
-        await AsyncStorage.removeItem("highlighted_news_id");
-      }
-    };
-
-    handlePendingDeepLink();
-  }, []);
+ 
   return (
     <Tabs
       screenOptions={({ route }) => ({

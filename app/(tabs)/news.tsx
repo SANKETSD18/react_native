@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -37,6 +37,7 @@ const News = () => {
   const [highlightedNewsId, setHighlightedNewsId] = useState<string | null>(
     null
   );
+  const flatListRef = useRef<FlatList>(null);
 
   const categories = [
     "All",
@@ -77,11 +78,12 @@ const News = () => {
     setRefreshing(false);
   };
 
+  // ✅ Check for highlighted news on mount
   useEffect(() => {
     const checkHighlight = async () => {
       const id = await AsyncStorage.getItem("highlighted_news_id");
       if (id) {
-        console.log("🎯 Highlighting news:", id);
+        // console.log("🎯 Highlighting news:", id);
         setHighlightedNewsId(id);
 
         setTimeout(async () => {
@@ -93,6 +95,27 @@ const News = () => {
 
     checkHighlight();
   }, []);
+
+  // ✅ Auto-scroll to highlighted news
+  // ✅ Scroll to highlighted news after data is loaded
+  useEffect(() => {
+    if (!highlightedNewsId || newsList.length === 0) return;
+
+    const scrollToHighlighted = () => {
+      const index = newsList.findIndex((item) => item.id === highlightedNewsId);
+      if (index !== -1 && flatListRef.current) {
+        // console.log("🟢 Scrolling to index:", index);
+        flatListRef.current.scrollToIndex({ index, animated: true });
+      } else {
+        console.log("⚠️ Highlighted news not found in list");
+      }
+    };
+
+    // ✅ थोड़ा delay दो ताकि FlatList render हो जाए
+    const timer = setTimeout(scrollToHighlighted, 800);
+
+    return () => clearTimeout(timer);
+  }, [highlightedNewsId, newsList]);
 
   const handleEdit = (item: NewsData) => {
     if (role !== "admin") {
@@ -202,39 +225,22 @@ const News = () => {
       : newsList.filter((item) => item.category === selectedCategory);
 
   const renderItem = ({ item }: { item: NewsData }) => {
-    const isHighlighted = item.id === highlightedNewsId;
-   
-
     return (
-      // <TouchableOpacity
-      //   onPress={() => setSelectedNews(item)}
-      //   activeOpacity={0.7}
-      //   style={isHighlighted ? styles.highlightedItem : undefined}
-      // >
-      //   <NewsListItem
-      //     item={item}
-      //     onEdit={handleEdit}
-      //     onDelete={() =>
-      //       handleDelete(item.id, item.image_path, item.video_path)
-      //     }
-      //   />
-      // </TouchableOpacity>
       <View style={styles.newsCard}>
-  <TouchableOpacity
-    onPress={() => setSelectedNews(item)}
-    activeOpacity={0.8}
-  >
-    <NewsListItem
-      item={item}
-      onEdit={handleEdit}
-      onDelete={() =>
-        handleDelete(item.id, item.image_path, item.video_path)
-      }
-      isHighlighted={item.id === highlightedNewsId} 
-    />
-  </TouchableOpacity>
-</View>
-
+        <TouchableOpacity
+          onPress={() => setSelectedNews(item)}
+          activeOpacity={0.8}
+        >
+          <NewsListItem
+            item={item}
+            onEdit={handleEdit}
+            onDelete={() =>
+              handleDelete(item.id, item.image_path, item.video_path)
+            }
+            isHighlighted={item.id === highlightedNewsId}
+          />
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -364,6 +370,7 @@ const News = () => {
         <NewsSkeletonLoader />
       ) : (
         <FlatList
+          ref={flatListRef}
           data={filteredNews}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
@@ -399,9 +406,9 @@ const styles = StyleSheet.create({
   },
   newsCard: {
     borderRadius: 10,
-  marginVertical: 5,
-  
-  backgroundColor: "transparent", 
+    marginVertical: 5,
+
+    backgroundColor: "transparent",
   },
 
   header: {
@@ -446,7 +453,6 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     padding: 16,
-    
   },
   greetingSection: {
     flexDirection: "row",

@@ -14,7 +14,7 @@ type Props = {
   item: NewsData;
   onEdit: (item: NewsData) => void;
   onDelete: () => void;
-  isHighlighted?: boolean; // ✅ यह prop parent से आएगा
+  isHighlighted?: boolean;
 };
 
 const NewsListItem: React.FC<Props> = ({
@@ -26,10 +26,8 @@ const NewsListItem: React.FC<Props> = ({
   const { user } = useAuth();
   const role: string = user?.user_metadata?.role || "guest";
 
-  // ✅ Animation value (अब अंदर)
   const highlightAnim = useRef(new Animated.Value(0)).current;
 
-  // ✅ जब isHighlighted true हो तब animation चलाओ
   useEffect(() => {
     if (isHighlighted) {
       Animated.sequence([
@@ -47,21 +45,19 @@ const NewsListItem: React.FC<Props> = ({
     }
   }, [isHighlighted]);
 
-  // ✅ Green overlay के लिए opacity interpolate करो
   const overlayOpacity = highlightAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 0.5], // 0 → 0.6 opacity fade
+    outputRange: [0, 0.5],
   });
 
   return (
     <View style={styles.itemWrapper}>
-      {/* ✅ Animated overlay layer */}
       {isHighlighted && (
         <Animated.View
           style={[
             StyleSheet.absoluteFillObject,
             {
-              backgroundColor: "#A5D6A7", // light green
+              backgroundColor: "#A5D6A7",
               opacity: overlayOpacity,
               zIndex: 5,
             },
@@ -69,7 +65,6 @@ const NewsListItem: React.FC<Props> = ({
         />
       )}
 
-      {/* ✅ Actual content */}
       <View style={[styles.itemContainer, { zIndex: 2 }]}>
         {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.image} />
@@ -117,14 +112,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 10,
-    elevation: 3, // ✅ थोड़ा shadow
+    elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     alignItems: "center",
   },
-
   image: {
     width: 80,
     height: 60,
@@ -166,3 +160,4 @@ const styles = StyleSheet.create({
 });
 
 export default NewsListItem;
+

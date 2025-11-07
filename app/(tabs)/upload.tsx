@@ -46,7 +46,7 @@ export default function PdfUploader() {
   const [refreshing, setRefreshing] = useState(false);
   const [filterCity, setFilterCity] = useState<string>("All");
   const [initialLoading, setInitialLoading] = useState(true);
-  const [uploadSectionExpanded, setUploadSectionExpanded] = useState(false); // ✅ NEW STATE
+  const [uploadSectionExpanded, setUploadSectionExpanded] = useState(false); 
 
   const fetchPDFs = useCallback(async () => {
     try {
