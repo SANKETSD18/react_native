@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import Ionicons from '@expo/vector-icons/Ionicons'; 
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -11,7 +11,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { NewsData } from "../../types/news";
 import NewsDetailView from "../components/NewsDetailView";
@@ -19,6 +19,7 @@ import NewsDialog from "../components/NewsDialog";
 import NewsListItem from "../components/NewsItem";
 import NewsSkeletonLoader from "../components/Skeleton/NewsSkeletonLoader";
 import { useAuth } from "../providers/AuthProvider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const News = () => {
   const { user } = useAuth();
@@ -33,8 +34,17 @@ const News = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [highlightedNewsId, setHighlightedNewsId] = useState<string | null>(
+    null
+  );
 
-  const categories = ["All", "India", "International", "Sport", "Entertainment"];
+  const categories = [
+    "All",
+    "India",
+    "International",
+    "Sport",
+    "Entertainment",
+  ];
 
   const fetchNews = async () => {
     try {
@@ -66,6 +76,23 @@ const News = () => {
     await fetchNews();
     setRefreshing(false);
   };
+
+  useEffect(() => {
+    const checkHighlight = async () => {
+      const id = await AsyncStorage.getItem("highlighted_news_id");
+      if (id) {
+        console.log("🎯 Highlighting news:", id);
+        setHighlightedNewsId(id);
+
+        setTimeout(async () => {
+          setHighlightedNewsId(null);
+          await AsyncStorage.removeItem("highlighted_news_id");
+        }, 5000);
+      }
+    };
+
+    checkHighlight();
+  }, []);
 
   const handleEdit = (item: NewsData) => {
     if (role !== "admin") {
@@ -169,22 +196,47 @@ const News = () => {
     setShowDialog(false);
   };
 
-  const filteredNews = selectedCategory === "All" 
-    ? newsList 
-    : newsList.filter(item => item.category === selectedCategory);
+  const filteredNews =
+    selectedCategory === "All"
+      ? newsList
+      : newsList.filter((item) => item.category === selectedCategory);
 
-  const renderItem = ({ item }: { item: NewsData }) => (
-    <TouchableOpacity 
-      onPress={() => setSelectedNews(item)}
-      activeOpacity={0.7}
-    >
-      <NewsListItem
-        item={item}
-        onEdit={handleEdit}
-        onDelete={() => handleDelete(item.id, item.image_path, item.video_path)}
-      />
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: { item: NewsData }) => {
+    const isHighlighted = item.id === highlightedNewsId;
+   
+
+    return (
+      // <TouchableOpacity
+      //   onPress={() => setSelectedNews(item)}
+      //   activeOpacity={0.7}
+      //   style={isHighlighted ? styles.highlightedItem : undefined}
+      // >
+      //   <NewsListItem
+      //     item={item}
+      //     onEdit={handleEdit}
+      //     onDelete={() =>
+      //       handleDelete(item.id, item.image_path, item.video_path)
+      //     }
+      //   />
+      // </TouchableOpacity>
+      <View style={styles.newsCard}>
+  <TouchableOpacity
+    onPress={() => setSelectedNews(item)}
+    activeOpacity={0.8}
+  >
+    <NewsListItem
+      item={item}
+      onEdit={handleEdit}
+      onDelete={() =>
+        handleDelete(item.id, item.image_path, item.video_path)
+      }
+      isHighlighted={item.id === highlightedNewsId} 
+    />
+  </TouchableOpacity>
+</View>
+
+    );
+  };
 
   const renderHeader = () => (
     <>
@@ -193,11 +245,11 @@ const News = () => {
         <View>
           <Text style={styles.greeting}>Hello, {username} 👋</Text>
           <Text style={styles.date}>
-            {new Date().toLocaleDateString('en-IN', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
+            {new Date().toLocaleDateString("en-IN", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
             })}
           </Text>
         </View>
@@ -231,14 +283,16 @@ const News = () => {
               key={category}
               style={[
                 styles.categoryChip,
-                selectedCategory === category && styles.categoryChipActive
+                selectedCategory === category && styles.categoryChipActive,
               ]}
               onPress={() => setSelectedCategory(category)}
             >
-              <Text style={[
-                styles.categoryText,
-                selectedCategory === category && styles.categoryTextActive
-              ]}>
+              <Text
+                style={[
+                  styles.categoryText,
+                  selectedCategory === category && styles.categoryTextActive,
+                ]}
+              >
                 {category}
               </Text>
             </TouchableOpacity>
@@ -250,7 +304,8 @@ const News = () => {
       <View style={styles.newsCountSection}>
         <Ionicons name="newspaper-outline" size={18} color="#C62828" />
         <Text style={styles.newsCount}>
-          {filteredNews.length} {filteredNews.length === 1 ? 'Article' : 'Articles'}
+          {filteredNews.length}{" "}
+          {filteredNews.length === 1 ? "Article" : "Articles"}
         </Text>
       </View>
     </>
@@ -261,10 +316,9 @@ const News = () => {
       <Ionicons name="newspaper-outline" size={64} color="#ccc" />
       <Text style={styles.emptyText}>No News Available</Text>
       <Text style={styles.emptySubtext}>
-        {selectedCategory === "All" 
-          ? "Check back later for updates" 
-          : `No news in ${selectedCategory} category`
-        }
+        {selectedCategory === "All"
+          ? "Check back later for updates"
+          : `No news in ${selectedCategory} category`}
       </Text>
       {role === "admin" && (
         <TouchableOpacity
@@ -307,7 +361,7 @@ const News = () => {
       </View>
 
       {loading ? (
-        <NewsSkeletonLoader/>
+        <NewsSkeletonLoader />
       ) : (
         <FlatList
           data={filteredNews}
@@ -343,6 +397,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0,
   },
+  newsCard: {
+    borderRadius: 10,
+  marginVertical: 5,
+  
+  backgroundColor: "transparent", 
+  },
+
   header: {
     backgroundColor: "#C62828",
     paddingHorizontal: 20,
@@ -385,6 +446,7 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     padding: 16,
+    
   },
   greetingSection: {
     flexDirection: "row",

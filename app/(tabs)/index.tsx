@@ -1,77 +1,35 @@
-import { useState } from 'react';
-import { 
-  Alert, 
-  SafeAreaView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
+import { useState } from "react";
+import {
+  Alert,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   View,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
   ActivityIndicator,
-} from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
-import { useAuth } from '../providers/AuthProvider';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+} from "react-native";
+import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from "../providers/AuthProvider";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 
 export default function AuthScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
 
   const { user, role } = useAuth();
+
   const sessionEmail = user?.email ?? null;
-
-  // ✅ NEW: Password Reset Function
-  const resetPassword = async () => {
-    const trimmedEmail = email.trim().toLowerCase();
-
-    if (!trimmedEmail) {
-      return Alert.alert('Error', 'Please enter your email address');
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      return Alert.alert('Invalid Email', 'Please enter a valid email address');
-    }
-
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-        redirectTo: 'yourapp://reset-password', // Optional: Deep link for mobile
-      });
-
-      setLoading(false);
-
-      if (error) {
-        // console.log('Reset password error:', error);
-        return Alert.alert('Error', error.message);
-      }
-
-      Alert.alert(
-        'Check Your Email! 📧',
-        'Password reset link has been sent to your email. The link will expire in 10 minutes.',
-        [{ text: 'OK' }]
-      );
-
-      // Clear email field
-      setEmail('');
-
-    } catch (err: any) {
-      setLoading(false);
-      // console.log('Reset password exception:', err);
-      Alert.alert('Error', err.message || 'Something went wrong');
-    }
-  };
 
   const signUp = async () => {
     const trimmedEmail = email.trim().toLowerCase();
@@ -79,81 +37,85 @@ export default function AuthScreen() {
     const trimmedConfirm = confirmPassword.trim();
 
     if (!trimmedEmail || !trimmedPassword || !trimmedConfirm) {
-      return Alert.alert('Error', 'All fields are required');
+      return Alert.alert("Error", "All fields are required");
     }
 
     if (trimmedPassword !== trimmedConfirm) {
-      return Alert.alert('Password Mismatch', 'Passwords do not match');
+      return Alert.alert("Password Mismatch", "Passwords do not match");
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      return Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return Alert.alert("Invalid Email", "Please enter a valid email address");
     }
 
     if (trimmedPassword.length < 6) {
-      return Alert.alert('Weak Password', 'Password must be at least 6 characters long');
+      return Alert.alert(
+        "Weak Password",
+        "Password must be at least 6 characters long"
+      );
     }
 
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({ 
-        email: trimmedEmail, 
-        password: trimmedPassword 
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password: trimmedPassword,
       });
 
       setLoading(false);
 
       if (error) {
-        if (error.message.toLowerCase().includes('already') || 
-            error.message.toLowerCase().includes('registered')) {
+        if (
+          error.message.toLowerCase().includes("already") ||
+          error.message.toLowerCase().includes("registered")
+        ) {
           return Alert.alert(
-            'Account Already Exists', 
-            'This email is already registered. Please sign in instead.',
+            "Account Already Exists",
+            "This email is already registered. Please sign in instead.",
             [
-              { 
-                text: 'Go to Login', 
+              {
+                text: "Go to Login",
                 onPress: () => {
-                  setAuthMode('login');
-                  setPassword('');
-                  setConfirmPassword('');
-                }
-              }
+                  setAuthMode("login");
+                  setPassword("");
+                  setConfirmPassword("");
+                },
+              },
             ]
           );
         }
-        
-        return Alert.alert('Sign up failed', error.message);
+
+        return Alert.alert("Sign up failed", error.message);
       }
 
       if (!data.user) {
-        return Alert.alert('Error', 'Failed to create account');
+        return Alert.alert("Error", "Failed to create account");
       }
 
       if (data.user && !data.session) {
         Alert.alert(
-          'Success! 🎉', 
-          'Verification link sent to your email. Please confirm your email (expires in 10 min), then log in.',
+          "Success! 🎉",
+          "Verification link sent to your email. Please confirm your email (expires in 10 min), then log in.",
           [
-            { 
-              text: 'Go to Login', 
+            {
+              text: "Go to Login",
               onPress: () => {
-                setAuthMode('login');
-                setEmail('');
-                setPassword('');
-                setConfirmPassword('');
-              }
-            }
+                setAuthMode("login");
+                setEmail("");
+                setPassword("");
+                setConfirmPassword("");
+              },
+            },
           ]
         );
       } else if (data.session) {
-        Alert.alert('Success! 🎉', 'Account created successfully!');
+        Alert.alert("Success! 🎉", "Account created successfully!");
       }
-
     } catch (err: any) {
       setLoading(false);
-      Alert.alert('Error', err.message || 'Something went wrong');
+      Alert.alert("Error", err.message || "Something went wrong");
     }
   };
 
@@ -175,15 +137,15 @@ export default function AuthScreen() {
     setLoading(false);
 
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
+      if (error.message.includes("Invalid login credentials")) {
         return Alert.alert(
-          "Login Failed", 
+          "Login Failed",
           "Invalid email or password. Please try again."
         );
       }
-      if (error.message.includes('Email not confirmed')) {
+      if (error.message.includes("Email not confirmed")) {
         return Alert.alert(
-          "Email Not Verified", 
+          "Email Not Verified",
           "Please check your email and verify your account first."
         );
       }
@@ -195,17 +157,17 @@ export default function AuthScreen() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
   };
 
   const switchAuthMode = () => {
-    const newMode = authMode === 'login' ? 'signup' : 'login';
+    const newMode = authMode === "login" ? "signup" : "login";
     setAuthMode(newMode);
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
     setShowPassword(false);
     setShowConfirmPassword(false);
   };
@@ -215,7 +177,7 @@ export default function AuthScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="#C62828" barStyle="light-content" />
-        
+
         <View style={styles.loggedInContainer}>
           <View style={styles.loggedInHeader}>
             <View style={styles.avatarContainer}>
@@ -227,20 +189,34 @@ export default function AuthScreen() {
 
           <View style={styles.roleCard}>
             <View style={styles.roleIconContainer}>
-              <Ionicons 
-                name={role === 'admin' ? 'shield-checkmark' : 'person-circle'} 
-                size={32} 
-                color={role === 'admin' ? '#2e7d32' : '#1976d2'} 
+              <Ionicons
+                name={role === "admin" ? "shield-checkmark" : "person-circle"}
+                size={32}
+                color={role === "admin" ? "#2e7d32" : "#1976d2"}
               />
             </View>
             <View style={styles.roleInfo}>
               <Text style={styles.roleLabel}>Your Role</Text>
-              <Text style={[
-                styles.roleValue,
-                { color: role === 'admin' ? '#2e7d32' : '#1976d2' }
-              ]}>
-                {role === 'admin' ? '👑 Admin' : '👤 Guest'}
-              </Text>
+              {role ? (
+      <Text
+        style={[
+          styles.roleValue,
+          { color: role === "admin" ? "#2e7d32" : "#1976d2" },
+        ]}
+      >
+        {role === "admin" ? "👑 Admin" : "👤 Guest"}
+      </Text>
+    ) : (
+      <Text style={styles.roleValue}>—</Text> // 👈 blank dash if null
+    )}
+              {/* <Text
+                style={[
+                  styles.roleValue,
+                  { color: role === "admin" ? "#2e7d32" : "#1976d2" },
+                ]}
+              >
+                {role === "admin" ? "👑 Admin" : "👤 Guest"}
+              </Text> */}
             </View>
           </View>
 
@@ -256,7 +232,7 @@ export default function AuthScreen() {
               <Text style={styles.featureText}>View E-Papers</Text>
               <Ionicons name="checkmark-circle" size={20} color="#2e7d32" />
             </View>
-            {role === 'admin' && (
+            {role === "admin" && (
               <>
                 <View style={styles.featureItem}>
                   <Ionicons name="create-outline" size={20} color="#666" />
@@ -264,7 +240,11 @@ export default function AuthScreen() {
                   <Ionicons name="checkmark-circle" size={20} color="#2e7d32" />
                 </View>
                 <View style={styles.featureItem}>
-                  <Ionicons name="cloud-upload-outline" size={20} color="#666" />
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={20}
+                    color="#666"
+                  />
                   <Text style={styles.featureText}>Upload PDFs</Text>
                   <Ionicons name="checkmark-circle" size={20} color="#2e7d32" />
                 </View>
@@ -285,12 +265,12 @@ export default function AuthScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#C62828" barStyle="light-content" />
-      
+
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -306,39 +286,49 @@ export default function AuthScreen() {
           {/* Tab Toggle */}
           <View style={styles.tabContainer}>
             <TouchableOpacity
-              style={[styles.tab, authMode === 'login' && styles.tabActive]}
+              style={[styles.tab, authMode === "login" && styles.tabActive]}
               onPress={() => {
-                setAuthMode('login');
-                setEmail('');
-                setPassword('');
-                setConfirmPassword('');
+                setAuthMode("login");
+                setEmail("");
+                setPassword("");
+                setConfirmPassword("");
               }}
             >
-              <Ionicons 
-                name="log-in-outline" 
-                size={20} 
-                color={authMode === 'login' ? '#C62828' : '#999'} 
+              <Ionicons
+                name="log-in-outline"
+                size={20}
+                color={authMode === "login" ? "#C62828" : "#999"}
               />
-              <Text style={[styles.tabText, authMode === 'login' && styles.tabTextActive]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  authMode === "login" && styles.tabTextActive,
+                ]}
+              >
                 Login
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tab, authMode === 'signup' && styles.tabActive]}
+              style={[styles.tab, authMode === "signup" && styles.tabActive]}
               onPress={() => {
-                setAuthMode('signup');
-                setEmail('');
-                setPassword('');
-                setConfirmPassword('');
+                setAuthMode("signup");
+                setEmail("");
+                setPassword("");
+                setConfirmPassword("");
               }}
             >
-              <Ionicons 
-                name="person-add-outline" 
-                size={20} 
-                color={authMode === 'signup' ? '#C62828' : '#999'} 
+              <Ionicons
+                name="person-add-outline"
+                size={20}
+                color={authMode === "signup" ? "#C62828" : "#999"}
               />
-              <Text style={[styles.tabText, authMode === 'signup' && styles.tabTextActive]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  authMode === "signup" && styles.tabTextActive,
+                ]}
+              >
                 Sign Up
               </Text>
             </TouchableOpacity>
@@ -347,13 +337,12 @@ export default function AuthScreen() {
           {/* Form Container */}
           <View style={styles.formContainer}>
             <Text style={styles.formTitle}>
-              {authMode === 'login' ? '👋 Welcome Back!' : '🎉 Create Account'}
+              {authMode === "login" ? "👋 Welcome Back!" : "🎉 Create Account"}
             </Text>
             <Text style={styles.formSubtitle}>
-              {authMode === 'login' 
-                ? 'Sign in to access your account' 
-                : 'Join us to get latest news updates'
-              }
+              {authMode === "login"
+                ? "Sign in to access your account"
+                : "Join us to get latest news updates"}
             </Text>
 
             {/* Email Input */}
@@ -373,7 +362,7 @@ export default function AuthScreen() {
             </View>
 
             {/* Password Input (Only for Login and Sign Up) */}
-            {(authMode === 'login' || authMode === 'signup') && (
+            {(authMode === "login" || authMode === "signup") && (
               <View style={styles.inputContainer}>
                 <View style={styles.inputIconContainer}>
                   <Ionicons name="lock-closed-outline" size={20} color="#999" />
@@ -391,17 +380,17 @@ export default function AuthScreen() {
                   style={styles.passwordToggle}
                   onPress={() => setShowPassword(!showPassword)}
                 >
-                  <Ionicons 
-                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#999" 
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#999"
                   />
                 </TouchableOpacity>
               </View>
             )}
 
             {/* Confirm Password (Only for Sign Up) */}
-            {authMode === 'signup' && (
+            {authMode === "signup" && (
               <View style={styles.inputContainer}>
                 <View style={styles.inputIconContainer}>
                   <Ionicons name="lock-closed-outline" size={20} color="#999" />
@@ -419,47 +408,58 @@ export default function AuthScreen() {
                   style={styles.passwordToggle}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  <Ionicons 
-                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#999" 
+                  <Ionicons
+                    name={
+                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
+                    }
+                    size={20}
+                    color="#999"
                   />
                 </TouchableOpacity>
               </View>
             )}
 
             {/* ✅ NEW: Forgot Password Link (Only in Login Mode) */}
-            {authMode === 'login' && (
-              <TouchableOpacity 
+            {authMode === "login" && (
+              <TouchableOpacity
                 style={styles.forgotPassword}
-                onPress={() => router.push('/forgot-password')}
+                onPress={() => router.push("/forgot-password")}
               >
-                <Text style={styles.forgotPasswordText}>
-                  Forgot Password?
-                </Text>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
             )}
 
             {/* Submit Button */}
             <TouchableOpacity
-              disabled={loading || !email || (authMode !== 'login' && (!password || !confirmPassword))}
+              disabled={
+                loading ||
+                !email ||
+                (authMode !== "login" && (!password || !confirmPassword))
+              }
               style={[
-                styles.submitButton, 
-                (loading || !email || (authMode !== 'login' && (!password || !confirmPassword))) && styles.buttonDisabled
+                styles.submitButton,
+                (loading ||
+                  !email ||
+                  (authMode !== "login" && (!password || !confirmPassword))) &&
+                  styles.buttonDisabled,
               ]}
-              onPress={authMode === 'login' ? signIn : signUp}
+              onPress={authMode === "login" ? signIn : signUp}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Ionicons 
-                    name={authMode === 'login' ? "log-in-outline" : "person-add-outline"} 
-                    size={20} 
-                    color="#fff" 
+                  <Ionicons
+                    name={
+                      authMode === "login"
+                        ? "log-in-outline"
+                        : "person-add-outline"
+                    }
+                    size={20}
+                    color="#fff"
                   />
                   <Text style={styles.submitButtonText}>
-                    {authMode === 'login' ? 'Login' : 'Create Account'}
+                    {authMode === "login" ? "Login" : "Create Account"}
                   </Text>
                 </>
               )}
@@ -468,11 +468,13 @@ export default function AuthScreen() {
             {/* Switch Auth Mode Link */}
             <View style={styles.switchContainer}>
               <Text style={styles.switchText}>
-                {authMode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+                {authMode === "login"
+                  ? "Don't have an account?"
+                  : "Already have an account?"}
               </Text>
               <TouchableOpacity onPress={switchAuthMode}>
                 <Text style={styles.switchLink}>
-                  {authMode === 'login' ? 'Sign Up' : 'Login'}
+                  {authMode === "login" ? "Sign Up" : "Login"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -480,12 +482,15 @@ export default function AuthScreen() {
 
           {/* Info Card */}
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={20} color="#1976d2" />
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color="#1976d2"
+            />
             <Text style={styles.infoText}>
-              {authMode === 'login' 
-                ? 'Enter your credentials to access exclusive content'
-                : 'Create an account to access exclusive news and e-papers'
-              }
+              {authMode === "login"
+                ? "Enter your credentials to access exclusive content"
+                : "Create an account to access exclusive news and e-papers"}
             </Text>
           </View>
         </ScrollView>
@@ -507,7 +512,7 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: "center",
   },
-  
+
   // Header
   header: {
     alignItems: "center",
@@ -534,7 +539,7 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "500",
   },
-  
+
   // Tab Container
   tabContainer: {
     flexDirection: "row",
@@ -616,19 +621,19 @@ const styles = StyleSheet.create({
   passwordToggle: {
     padding: 8,
   },
-  
+
   // ✅ NEW: Forgot Password
   forgotPassword: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginBottom: 16,
     marginTop: -8,
   },
   forgotPasswordText: {
-    color: '#C62828',
+    color: "#C62828",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
-  
+
   // Submit Button
   submitButton: {
     flexDirection: "row",
@@ -666,7 +671,7 @@ const styles = StyleSheet.create({
     color: "#C62828",
     fontWeight: "700",
   },
-  
+
   // Info Card
   infoCard: {
     flexDirection: "row",
@@ -682,7 +687,7 @@ const styles = StyleSheet.create({
     color: "#1976d2",
     lineHeight: 18,
   },
-  
+
   // Logged In View
   loggedInContainer: {
     flex: 1,

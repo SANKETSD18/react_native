@@ -1,20 +1,25 @@
 import * as Linking from "expo-linking";
 import { router, Stack, usePathname } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AuthProvider from "../app/providers/AuthProvider";
 import { DeepLinkProvider, useDeepLink } from "../context/DeepLinkContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabaseClient";
+import { useNavigationContainerRef } from "expo-router";
 
 function AppContent() {
   const path = usePathname();
   const { setIsDeepLinkChecked, setIsRecoveryMode } = useDeepLink();
-    useEffect(() => {
+  const navigationRef = useNavigationContainerRef();
+
+  useEffect(() => {
     const checkRecoveryOnReload = async () => {
       const isRecovery = await AsyncStorage.getItem("is_recovery");
 
       if (isRecovery === "true") {
-        console.log("♻️ App reload detected during recovery - clearing session");
+        console.log(
+          "♻️ App reload detected during recovery - clearing session"
+        );
 
         // clear temp recovery flag first
         await AsyncStorage.removeItem("is_recovery");
@@ -49,6 +54,12 @@ function AppContent() {
         const [base, hash] = fixedUrl.split("#");
         fixedUrl = `${base}?${hash}`;
       }
+      if (url.includes("pradesh-times://news/")) {
+        const id = url.split("/news/")[1];
+        // console.log("📰 Navigating to news detail with ID:", id);
+        await AsyncStorage.setItem("highlighted_news_id", id);
+        // router.push("/news");
+      }
 
       try {
         const parsed = Linking.parse(fixedUrl);
@@ -62,15 +73,11 @@ function AppContent() {
           | undefined;
 
         if (token && refresh_token && flowType === "recovery") {
-          
           await AsyncStorage.setItem("is_recovery_mode", "true");
-          
+
           setIsRecoveryMode(true);
 
-
-
           console.log("🔑 token and refesh token", token, refresh_token);
-
 
           const resetUrl = `/reset-password?access_token=${encodeURIComponent(
             token
@@ -127,4 +134,3 @@ export default function RootLayout() {
     </DeepLinkProvider>
   );
 }
-

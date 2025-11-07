@@ -1,16 +1,33 @@
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Platform, View } from "react-native";
-import { useAuth } from "../providers/AuthProvider"; 
+import { useAuth } from "../providers/AuthProvider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect } from "react";
 export default function TabLayout() {
-  const { role } = useAuth(); 
+  const { role } = useAuth();
+  useEffect(() => {
+    const handlePendingDeepLink = async () => {
+      const id = await AsyncStorage.getItem("highlighted_news_id");
+      if (id) {
+        console.log("🟢 Tabs ready, navigating to /news:", id);
 
+        // navigate to news tab
+        router.push("/news");
+
+        // optional: clear once used
+        await AsyncStorage.removeItem("highlighted_news_id");
+      }
+    };
+
+    handlePendingDeepLink();
+  }, []);
   return (
     <Tabs
       screenOptions={({ route }) => ({
-        tabBarActiveTintColor: "#C62828",  // ✅ Red for active
-        tabBarInactiveTintColor: "#999",    // ✅ Gray for inactive
-        
+        tabBarActiveTintColor: "#C62828", // ✅ Red for active
+        tabBarInactiveTintColor: "#999", // ✅ Gray for inactive
+
         // ✅ MERGED SINGLE tabBarStyle
         tabBarStyle: {
           backgroundColor: "#fff",
@@ -27,20 +44,20 @@ export default function TabLayout() {
           shadowRadius: 8,
           elevation: 10,
           position: "absolute",
-          
+
           // ✅ Hide tabs on upload screen
-         display: route.name === "pdfPreview" ? "none" : "flex",
+          display: route.name === "pdfPreview" ? "none" : "flex",
         },
-        
+
         tabBarItemStyle: {
           paddingVertical: 5,
         },
-        
+
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
         },
-        
+
         headerShown: false,
       })}
     >
@@ -50,14 +67,16 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ focused, color }) => (
-            <View style={[
-              styles.iconContainer,
-              focused && styles.iconContainerActive
-            ]}>
-              <Ionicons 
-                name={focused ? "home" : "home-outline"} 
-                size={24} 
-                color={color} 
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.iconContainerActive,
+              ]}
+            >
+              <Ionicons
+                name={focused ? "home" : "home-outline"}
+                size={24}
+                color={color}
               />
             </View>
           ),
@@ -70,14 +89,16 @@ export default function TabLayout() {
         options={{
           title: "News",
           tabBarIcon: ({ focused, color }) => (
-            <View style={[
-              styles.iconContainer,
-              focused && styles.iconContainerActive
-            ]}>
-              <Ionicons 
-                name={focused ? "newspaper" : "newspaper-outline"} 
-                size={24} 
-                color={color} 
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.iconContainerActive,
+              ]}
+            >
+              <Ionicons
+                name={focused ? "newspaper" : "newspaper-outline"}
+                size={24}
+                color={color}
               />
             </View>
           ),
@@ -90,19 +111,19 @@ export default function TabLayout() {
         options={{
           title: "E-Paper",
           tabBarIcon: ({ focused, color }) => (
-            <View style={[
-              styles.iconContainer,
-              focused && styles.iconContainerActive
-            ]}>
-              <Ionicons 
-                name={focused ? "document-text" : "document-text-outline"} 
-                size={24} 
-                color={color} 
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.iconContainerActive,
+              ]}
+            >
+              <Ionicons
+                name={focused ? "document-text" : "document-text-outline"}
+                size={24}
+                color={color}
               />
               {/* ✅ Admin badge - context se role */}
-              {role === "admin" && (
-                <View style={styles.adminDot} />
-              )}
+              {role === "admin" && <View style={styles.adminDot} />}
             </View>
           ),
         }}

@@ -115,20 +115,8 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
-            
         }
-        
     }
-  applicationVariants.all { variant ->
-    variant.outputs.all {
-        def appName = "PradeshTimes"
-        def buildType = variant.buildType.name
-        def versionName = variant.versionName
-        def date = new Date().format("yyyyMMdd-HHmm")
-        outputFileName = "${appName}-${versionName}-${buildType}-${date}.apk"
-    }
-}
-    
     packagingOptions {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
@@ -137,9 +125,7 @@ android {
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
-    
 }
-
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
 // Accepts values in comma delimited lists, example:

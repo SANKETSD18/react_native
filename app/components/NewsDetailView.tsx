@@ -18,30 +18,52 @@ import Video from "react-native-video";
 import { decode as decodeB64 } from "base64-arraybuffer";
 import { supabase } from "../../lib/supabaseClient";
 import { NewsData } from "../../types/news";
-import Ionicons from '@expo/vector-icons/Ionicons'; // ✅ Add this import
+import Ionicons from "@expo/vector-icons/Ionicons"; // ✅ Add this import
+import { Share } from "react-native";
 
 type Props = {
   news: NewsData;
   onBack: () => void;
   editable?: boolean;
-  onSave: (data: NewsData & { image_path?: string | null; video_path?: string | null }) => void;
+  onSave: (
+    data: NewsData & { image_path?: string | null; video_path?: string | null }
+  ) => void;
 };
 
 type UploadResult = { publicUrl: string; path: string };
 
 const BUCKET = "news-media";
 
-const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSave }) => {
-  const [serverImageUrl, setServerImageUrl] = useState<string | null>(news.image_url ?? null);
-  const [serverVideoUrl, setServerVideoUrl] = useState<string | null>(news.video_url ?? null);
-  const [serverImagePath, setServerImagePath] = useState<string | null>((news as any)?.image_path ?? null);
-  const [serverVideoPath, setServerVideoPath] = useState<string | null>((news as any)?.video_path ?? null);
+const NewsDetailView: React.FC<Props> = ({
+  news,
+  onBack,
+  editable = false,
+  onSave,
+}) => {
+  const [serverImageUrl, setServerImageUrl] = useState<string | null>(
+    news.image_url ?? null
+  );
+  const [serverVideoUrl, setServerVideoUrl] = useState<string | null>(
+    news.video_url ?? null
+  );
+  const [serverImagePath, setServerImagePath] = useState<string | null>(
+    (news as any)?.image_path ?? null
+  );
+  const [serverVideoPath, setServerVideoPath] = useState<string | null>(
+    (news as any)?.video_path ?? null
+  );
 
   const [localTitle, setLocalTitle] = useState(news.title);
   const [localDesc, setLocalDesc] = useState(news.description);
 
-  const [pendingImage, setPendingImage] = useState<{ uri: string; mime: string } | null>(null);
-  const [pendingVideo, setPendingVideo] = useState<{ uri: string; mime: string } | null>(null);
+  const [pendingImage, setPendingImage] = useState<{
+    uri: string;
+    mime: string;
+  } | null>(null);
+  const [pendingVideo, setPendingVideo] = useState<{
+    uri: string;
+    mime: string;
+  } | null>(null);
 
   const [isWorking, setIsWorking] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -50,18 +72,23 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
   const getFileExtension = (uri: string): string => {
-    const lastDot = uri.lastIndexOf('.');
-    if (lastDot === -1) return '';
+    const lastDot = uri.lastIndexOf(".");
+    if (lastDot === -1) return "";
     return uri.substring(lastDot);
   };
 
-  const generateMediaPath = (uri: string, type: 'image' | 'video', newsId: string, createdAt: string): string => {
+  const generateMediaPath = (
+    uri: string,
+    type: "image" | "video",
+    newsId: string,
+    createdAt: string
+  ): string => {
     const date = formatDate(createdAt);
     const extension = getFileExtension(uri);
     const fileName = `${type}${extension}`;
@@ -77,15 +104,22 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
     }
   };
 
-  const uploadFileToBucket = async (uri: string, path: string, contentType: string): Promise<UploadResult> => {
+  const uploadFileToBucket = async (
+    uri: string,
+    path: string,
+    contentType: string
+  ): Promise<UploadResult> => {
     let fetchUri = uri;
-    if (Platform.OS === "android" && !fetchUri.startsWith("file://")) fetchUri = "file://" + fetchUri;
-    const base64 = await FileSystem.readAsStringAsync(fetchUri, { encoding: FileSystem.EncodingType.Base64 });
+    if (Platform.OS === "android" && !fetchUri.startsWith("file://"))
+      fetchUri = "file://" + fetchUri;
+    const base64 = await FileSystem.readAsStringAsync(fetchUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
     const bytes = decodeB64(base64);
 
-    const { error } = await supabase.storage.from(BUCKET).upload(path, bytes, { 
-      contentType, 
-      upsert: true
+    const { error } = await supabase.storage.from(BUCKET).upload(path, bytes, {
+      contentType,
+      upsert: true,
     });
     if (error) throw error;
 
@@ -111,7 +145,10 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
   };
 
   const selectVideo = async () => {
-    const pick = await DocumentPicker.getDocumentAsync({ type: "video/*", copyToCacheDirectory: true });
+    const pick = await DocumentPicker.getDocumentAsync({
+      type: "video/*",
+      copyToCacheDirectory: true,
+    });
     if (!pick.assets?.length) return;
     const asset = pick.assets[0];
     setPendingVideo({ uri: asset.uri, mime: asset.mimeType || "video/mp4" });
@@ -133,7 +170,9 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
       let newVideoPath: string | null = serverVideoPath;
 
       if (pendingImage) {
-        const date = formatDate((news as any).created_at || new Date().toISOString());
+        const date = formatDate(
+          (news as any).created_at || new Date().toISOString()
+        );
         const extension = getFileExtension(pendingImage.uri);
         const timestamp = Date.now();
         const fileName = `image-${timestamp}${extension}`;
@@ -149,7 +188,11 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
         }
 
         setStatusMsg("Uploading image...");
-        const uploaded = await uploadFileToBucket(pendingImage.uri, path, pendingImage.mime);
+        const uploaded = await uploadFileToBucket(
+          pendingImage.uri,
+          path,
+          pendingImage.mime
+        );
 
         newImageUrl = uploaded.publicUrl;
         newImagePath = uploaded.path;
@@ -158,7 +201,9 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
       }
 
       if (pendingVideo) {
-        const date = formatDate((news as any).created_at || new Date().toISOString());
+        const date = formatDate(
+          (news as any).created_at || new Date().toISOString()
+        );
         const extension = getFileExtension(pendingVideo.uri);
         const timestamp = Date.now();
         const fileName = `video-${timestamp}${extension}`;
@@ -174,7 +219,11 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
         }
 
         setStatusMsg("Uploading video...");
-        const uploaded = await uploadFileToBucket(pendingVideo.uri, path, pendingVideo.mime);
+        const uploaded = await uploadFileToBucket(
+          pendingVideo.uri,
+          path,
+          pendingVideo.mime
+        );
 
         newVideoUrl = uploaded.publicUrl;
         newVideoPath = uploaded.path;
@@ -202,7 +251,7 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
       setPendingImage(null);
       setPendingVideo(null);
       setStatusMsg("Saved successfully!");
-      
+
       setTimeout(() => setStatusMsg(null), 2000);
     } catch (e: any) {
       Alert.alert("Save failed", e?.message ?? "Unknown error");
@@ -218,8 +267,28 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
     setLocalDesc(news.description);
   };
 
-  const previewImage = pendingImage ? { uri: pendingImage.uri } : serverImageUrl ? { uri: serverImageUrl } : null;
-  const previewVideo = !pendingImage && (pendingVideo ? pendingVideo.uri : serverVideoUrl || null);
+  const previewImage = pendingImage
+    ? { uri: pendingImage.uri }
+    : serverImageUrl
+    ? { uri: serverImageUrl }
+    : null;
+  const previewVideo =
+    !pendingImage && (pendingVideo ? pendingVideo.uri : serverVideoUrl || null);
+
+  const handleShare = async () => {
+    try {
+      // यहाँ पर link generate करो (जैसे news id से)
+      const newsLink = `pradesh-times://news/${news.id}`;
+
+      // अब share API को call करो
+      await Share.share({
+        message: `📰 ${news.title}\n\n${news.description}\n\nRead full news here:\n${newsLink}`,
+      });
+    } catch (error) {
+      console.error("Share error:", error);
+      Alert.alert("Error", "Unable to share this news right now.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -229,6 +298,13 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
           <Ionicons name="arrow-back" size={24} color="#fff" />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
+        <View style={{ marginTop: 20, alignItems: "center" }}>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+            <Ionicons name="share-social-outline" size={20} color="#fff" />
+            <Text style={styles.shareButtonText}>Share News</Text>
+          </TouchableOpacity>
+        </View>
+
         {editable && (
           <View style={styles.editBadge}>
             <Ionicons name="create-outline" size={16} color="#fff" />
@@ -237,7 +313,7 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
         )}
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -248,10 +324,12 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
             {isWorking && (
               <View style={styles.statusContainer}>
                 <ActivityIndicator size="small" color="#C62828" />
-                <Text style={styles.statusWorking}>{statusMsg ?? "Working..."}</Text>
+                <Text style={styles.statusWorking}>
+                  {statusMsg ?? "Working..."}
+                </Text>
               </View>
             )}
-            
+
             {!isWorking && statusMsg && (
               <View style={[styles.statusContainer, styles.statusSuccess]}>
                 <Ionicons name="checkmark-circle" size={20} color="#2e7d32" />
@@ -262,11 +340,11 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
             {/* ✅ Media Section */}
             <View style={styles.mediaSection}>
               <Text style={styles.sectionTitle}>Media</Text>
-              
+
               {/* Media Buttons */}
               <View style={styles.mediaButtonsRow}>
-                <TouchableOpacity 
-                  onPress={selectImage} 
+                <TouchableOpacity
+                  onPress={selectImage}
                   style={styles.mediaButton}
                   disabled={isWorking}
                 >
@@ -274,8 +352,8 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
                   <Text style={styles.mediaButtonText}>Choose Photo</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  onPress={selectVideo} 
+                <TouchableOpacity
+                  onPress={selectVideo}
                   style={styles.mediaButton}
                   disabled={isWorking}
                 >
@@ -288,28 +366,28 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
               {(previewImage || previewVideo) && (
                 <View style={styles.mediaPreviewContainer}>
                   {previewImage && (
-                    <Image 
-                      source={previewImage} 
-                      style={styles.mediaPreview} 
-                      resizeMode="cover" 
+                    <Image
+                      source={previewImage}
+                      style={styles.mediaPreview}
+                      resizeMode="cover"
                     />
                   )}
-                  
+
                   {!previewImage && previewVideo && (
                     <View style={styles.videoPreviewWrapper}>
-                      <Video 
-                        source={{ uri: previewVideo }} 
-                        style={styles.mediaPreview} 
-                        controls 
-                        resizeMode="contain" 
+                      <Video
+                        source={{ uri: previewVideo }}
+                        style={styles.mediaPreview}
+                        controls
+                        resizeMode="contain"
                       />
                     </View>
                   )}
 
                   {/* Remove Media Button */}
                   {(pendingImage || pendingVideo) && (
-                    <TouchableOpacity 
-                      style={styles.removeMediaButton} 
+                    <TouchableOpacity
+                      style={styles.removeMediaButton}
                       onPress={removeMedia}
                     >
                       <Ionicons name="close-circle" size={28} color="#ff4444" />
@@ -322,13 +400,14 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
             {/* ✅ Title Input */}
             <View style={styles.inputSection}>
               <Text style={styles.inputLabel}>
-                <Ionicons name="newspaper-outline" size={16} color="#666" /> Title
+                <Ionicons name="newspaper-outline" size={16} color="#666" />{" "}
+                Title
               </Text>
-              <TextInput 
-                style={styles.titleInput} 
-                value={localTitle} 
-                onChangeText={setLocalTitle} 
-                placeholder="Enter news title" 
+              <TextInput
+                style={styles.titleInput}
+                value={localTitle}
+                onChangeText={setLocalTitle}
+                placeholder="Enter news title"
                 placeholderTextColor="#999"
               />
             </View>
@@ -336,7 +415,8 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
             {/* ✅ Description Input */}
             <View style={styles.inputSection}>
               <Text style={styles.inputLabel}>
-                <Ionicons name="document-text-outline" size={16} color="#666" /> Description
+                <Ionicons name="document-text-outline" size={16} color="#666" />{" "}
+                Description
               </Text>
               <TextInput
                 style={styles.descInput}
@@ -351,8 +431,8 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
 
             {/* ✅ Action Buttons */}
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={[styles.saveButton, isWorking && styles.buttonDisabled]} 
+              <TouchableOpacity
+                style={[styles.saveButton, isWorking && styles.buttonDisabled]}
                 onPress={handleSave}
                 disabled={isWorking}
               >
@@ -360,14 +440,18 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={20}
+                      color="#fff"
+                    />
                     <Text style={styles.saveButtonText}>Save Changes</Text>
                   </>
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={handleCancel}
                 disabled={isWorking}
               >
@@ -382,35 +466,35 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
             {(serverImageUrl || serverVideoUrl) && (
               <View style={styles.mediaViewContainer}>
                 {serverImageUrl && (
-                  <Image 
-                    source={{ uri: serverImageUrl }} 
-                    style={styles.mediaView} 
-                    resizeMode="cover" 
+                  <Image
+                    source={{ uri: serverImageUrl }}
+                    style={styles.mediaView}
+                    resizeMode="cover"
                   />
                 )}
                 {serverVideoUrl && (
-                  <Video 
-                    source={{ uri: serverVideoUrl }} 
-                    style={styles.mediaView} 
-                    controls 
-                    resizeMode="contain" 
+                  <Video
+                    source={{ uri: serverVideoUrl }}
+                    style={styles.mediaView}
+                    controls
+                    resizeMode="contain"
                   />
                 )}
               </View>
             )}
-            
+
             <View style={styles.contentView}>
               <Text style={styles.categoryBadge}>{news.category}</Text>
               <Text style={styles.titleView}>{news.title}</Text>
               <Text style={styles.descriptionView}>{news.description}</Text>
-              
+
               <View style={styles.metaInfo}>
                 <Ionicons name="time-outline" size={16} color="#999" />
                 <Text style={styles.dateText}>
-                  {new Date(news.created_at).toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
+                  {new Date(news.created_at).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
                   })}
                 </Text>
               </View>
@@ -423,9 +507,9 @@ const NewsDetailView: React.FC<Props> = ({ news, onBack, editable = false, onSav
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: "#f5f5f5" 
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
   },
   header: {
     flexDirection: "row",
@@ -441,8 +525,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  backText: { 
-    color: "#fff", 
+  backText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -527,9 +611,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
   },
-  mediaPreview: { 
-    width: "100%", 
-    height: 250, 
+  mediaPreview: {
+    width: "100%",
+    height: 250,
     borderRadius: 12,
     backgroundColor: "#f0f0f0",
   },
@@ -621,15 +705,32 @@ const styles = StyleSheet.create({
     backgroundColor: "#ccc",
     elevation: 0,
   },
-  
+  // share button styles
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#25D366", // WhatsApp green
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    gap: 8,
+    marginTop: 8,
+  },
+  shareButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
   // View Mode Styles
   mediaViewContainer: {
     borderRadius: 12,
     overflow: "hidden",
     marginBottom: 16,
   },
-  mediaView: { 
-    width: "100%", 
+  mediaView: {
+    width: "100%",
     height: 280,
   },
   contentView: {
@@ -648,15 +749,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
   },
-  titleView: { 
-    fontWeight: "bold", 
-    fontSize: 24, 
+  titleView: {
+    fontWeight: "bold",
+    fontSize: 24,
     color: "#222",
     marginBottom: 12,
     lineHeight: 32,
   },
-  descriptionView: { 
-    fontSize: 16, 
+  descriptionView: {
+    fontSize: 16,
     color: "#555",
     lineHeight: 24,
     marginBottom: 16,

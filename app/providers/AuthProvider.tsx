@@ -15,7 +15,7 @@ import { supabase } from "../../lib/supabaseClient";
 type AuthContextType = {
   user: User | null;
   session: Session | null;
-  role: string | null;
+  role: string | null ;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,7 +29,11 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
     useDeepLink();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  // const [role, setRole] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+
+
+
 
   // ✅ Track if we're currently in password reset flow
   const isResettingPassword = useRef(false);
@@ -47,7 +51,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
         return "user";
       }
 
-      return profileData?.role || "user";
+      return profileData?.role || null;
     } catch (err) {
       console.error("❌ Role fetch exception:", err);
       return "user";
