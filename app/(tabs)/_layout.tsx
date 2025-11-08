@@ -1,37 +1,32 @@
-import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Platform, View } from "react-native";
+import { Tabs } from "expo-router";
+import { StyleSheet, View } from "react-native";
 import { useAuth } from "../providers/AuthProvider";
-
 
 export default function TabLayout() {
   const { role } = useAuth();
- 
+
   return (
     <Tabs
-      screenOptions={({ route }) => ({
-        tabBarActiveTintColor: "#C62828", // ✅ Red for active
-        tabBarInactiveTintColor: "#999", // ✅ Gray for inactive
+      screenOptions={() => ({
+        tabBarActiveTintColor: "#C62828",
+        tabBarInactiveTintColor: "#999",
+        headerShown: false,
 
-        // ✅ MERGED SINGLE tabBarStyle
         tabBarStyle: {
           backgroundColor: "#fff",
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          height: Platform.OS === "ios" ? 85 : 65,
-          paddingTop: 8,
-          paddingBottom: Platform.OS === "ios" ? 20 : 8,
-          borderTopWidth: 1,
-          borderTopColor: "#f0f0f0",
+          height: 78,
+          paddingTop: 10,
+          paddingBottom: 8,
+          borderTopWidth: 0, 
+          
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: -3 },
+          shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
           elevation: 10,
-          position: "absolute",
-
-          // ✅ Hide tabs on upload screen
-          display: route.name === "pdfPreview" ? "none" : "flex",
         },
 
         tabBarItemStyle: {
@@ -39,14 +34,13 @@ export default function TabLayout() {
         },
 
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "600",
+          marginTop: 2,
         },
-
-        headerShown: false,
       })}
     >
-      {/* Tab 1: Home */}
+      {/* 🏠 Home */}
       <Tabs.Screen
         name="index"
         options={{
@@ -68,7 +62,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Tab 2: News */}
+      {/* 📰 News */}
       <Tabs.Screen
         name="news"
         options={{
@@ -90,7 +84,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Tab 3: E-Paper */}
+      {/* 📄 E-Paper */}
       <Tabs.Screen
         name="upload"
         options={{
@@ -107,7 +101,6 @@ export default function TabLayout() {
                 size={24}
                 color={color}
               />
-              {/* ✅ Admin badge - context se role */}
               {role === "admin" && <View style={styles.adminDot} />}
             </View>
           ),
@@ -120,7 +113,7 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   iconContainer: {
     width: 50,
-    height: 35,
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 12,
