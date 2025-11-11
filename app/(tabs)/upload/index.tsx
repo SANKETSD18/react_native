@@ -1,4 +1,4 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -22,6 +22,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import PdfPreview from "../../components/pdfPreview";
 import UploadSkeletonLoader from "../../components/Skeleton/UploadSkeletonLoader";
 import { useAuth } from "../../providers/AuthProvider";
+import { router } from "expo-router";
 
 const BUCKET = "epaper-pdf";
 
@@ -34,7 +35,13 @@ interface PdfFile {
 export default function PdfUploader() {
   const [pdfList, setPdfList] = useState<PdfFile[]>([]);
   const [search, setSearch] = useState<string>("");
-  const [cities] = useState<string[]>(["Bhopal", "Sehore", "Vidisha", "Rajgarh", "Narmadapuram"]);
+  const [cities] = useState<string[]>([
+    "Bhopal",
+    "Sehore",
+    "Vidisha",
+    "Rajgarh",
+    "Narmadapuram",
+  ]);
   const [selectedCity, setSelectedCity] = useState<string>("Bhopal");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
@@ -46,18 +53,22 @@ export default function PdfUploader() {
   const [refreshing, setRefreshing] = useState(false);
   const [filterCity, setFilterCity] = useState<string>("All");
   const [initialLoading, setInitialLoading] = useState(true);
-  const [uploadSectionExpanded, setUploadSectionExpanded] = useState(false); 
+  const [uploadSectionExpanded, setUploadSectionExpanded] = useState(false);
 
   const fetchPDFs = useCallback(async () => {
     try {
       setInitialLoading(true);
-      const { data, error } = await supabase.storage.from(BUCKET).list("", { limit: 100 });
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .list("", { limit: 100 });
       if (error) {
         console.error("Fetch PDFs error:", error);
         return;
       }
       const filesWithUrls: PdfFile[] = data.map((file) => {
-        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(file.name);
+        const { data: urlData } = supabase.storage
+          .from(BUCKET)
+          .getPublicUrl(file.name);
         return { name: file.name, url: urlData.publicUrl, path: file.name };
       });
       setPdfList(filesWithUrls);
@@ -83,16 +94,21 @@ export default function PdfUploader() {
       setLoading(true);
       setMessage(null);
 
-      const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf" });
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/pdf",
+      });
       if (!result.assets || !result.assets.length) {
         setLoading(false);
         return Alert.alert("Error", "No file selected.");
       }
 
       const fileUri = result.assets[0].uri;
-      const fileName = `${selectedCity}-${String(selectedDate.getDate()).padStart(2, "0")}-${String(
-        selectedDate.getMonth() + 1
-      ).padStart(2, "0")}-${selectedDate.getFullYear()}.pdf`;
+      const fileName = `${selectedCity}-${String(
+        selectedDate.getDate()
+      ).padStart(2, "0")}-${String(selectedDate.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${selectedDate.getFullYear()}.pdf`;
 
       const { data: signedUrlData, error: urlError } = await supabase.storage
         .from(BUCKET)
@@ -118,7 +134,7 @@ export default function PdfUploader() {
         setMessage("success");
         setUploadedFileName(fileName);
         fetchPDFs();
-        
+
         setTimeout(() => {
           setMessage(null);
           setUploadedFileName(null);
@@ -138,8 +154,8 @@ export default function PdfUploader() {
   const deletePDF = useCallback(
     (filePath: string, fileName: string) => {
       Alert.alert(
-        "Delete PDF", 
-        `Are you sure you want to delete ${fileName}?`, 
+        "Delete PDF",
+        `Are you sure you want to delete ${fileName}?`,
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -147,7 +163,9 @@ export default function PdfUploader() {
             style: "destructive",
             onPress: async () => {
               try {
-                const { error } = await supabase.storage.from(BUCKET).remove([filePath]);
+                const { error } = await supabase.storage
+                  .from(BUCKET)
+                  .remove([filePath]);
                 if (error) {
                   Alert.alert("Error", error.message);
                 } else {
@@ -167,32 +185,36 @@ export default function PdfUploader() {
   );
 
   const filteredList = pdfList.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    
+    const matchesSearch = item.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
     if (filterCity === "All") {
       return matchesSearch;
     }
-    
-    const matchesCity = item.name.toLowerCase().startsWith(filterCity.toLowerCase());
+
+    const matchesCity = item.name
+      .toLowerCase()
+      .startsWith(filterCity.toLowerCase());
     return matchesSearch && matchesCity;
   });
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   };
 
-  if (selectedPdf) {
-    return <PdfPreview pdfUrl={selectedPdf} goBack={() => setSelectedPdf(null)} />;
-  }
+  // if (selectedPdf) {
+  //   return <PdfPreview pdfUrl={selectedPdf} goBack={() => setSelectedPdf(null)} />;
+  // }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#C62828" barStyle="light-content" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -218,16 +240,21 @@ export default function PdfUploader() {
               activeOpacity={0.7}
             >
               <Text style={styles.sectionTitle}>
-                <Ionicons name="cloud-upload-outline" size={18} color="#C62828" /> Upload E-Paper
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={18}
+                  color="#C62828"
+                />{" "}
+                Upload E-Paper
               </Text>
               <View style={styles.expandIndicator}>
                 <Text style={styles.expandText}>
                   {uploadSectionExpanded ? "Collapse" : "Expand"}
                 </Text>
-                <Ionicons 
-                  name={uploadSectionExpanded ? "chevron-up" : "chevron-down"} 
-                  size={24} 
-                  color="#666" 
+                <Ionicons
+                  name={uploadSectionExpanded ? "chevron-up" : "chevron-down"}
+                  size={24}
+                  color="#666"
                 />
               </View>
             </TouchableOpacity>
@@ -237,7 +264,8 @@ export default function PdfUploader() {
               <View style={styles.uploadContent}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>
-                    <Ionicons name="location-outline" size={14} color="#666" /> Select City
+                    <Ionicons name="location-outline" size={14} color="#666" />{" "}
+                    Select City
                   </Text>
                   <View style={styles.pickerContainer}>
                     <Picker
@@ -254,14 +282,17 @@ export default function PdfUploader() {
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>
-                    <Ionicons name="calendar-outline" size={14} color="#666" /> Select Date
+                    <Ionicons name="calendar-outline" size={14} color="#666" />{" "}
+                    Select Date
                   </Text>
                   <TouchableOpacity
                     style={styles.dateButton}
                     onPress={() => setShowDatePicker(true)}
                   >
                     <Ionicons name="calendar" size={20} color="#C62828" />
-                    <Text style={styles.dateButtonText}>{formatDate(selectedDate)}</Text>
+                    <Text style={styles.dateButtonText}>
+                      {formatDate(selectedDate)}
+                    </Text>
                   </TouchableOpacity>
 
                   {showDatePicker && (
@@ -278,7 +309,10 @@ export default function PdfUploader() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.uploadButton, loading && styles.uploadButtonDisabled]}
+                  style={[
+                    styles.uploadButton,
+                    loading && styles.uploadButtonDisabled,
+                  ]}
                   onPress={uploadPDF}
                   disabled={loading}
                 >
@@ -296,23 +330,34 @@ export default function PdfUploader() {
                 </TouchableOpacity>
 
                 {message && (
-                  <View style={[
-                    styles.messageContainer,
-                    message === "success" ? styles.messageSuccess : styles.messageError
-                  ]}>
-                    <Ionicons 
-                      name={message === "success" ? "checkmark-circle" : "alert-circle"} 
-                      size={20} 
+                  <View
+                    style={[
+                      styles.messageContainer,
+                      message === "success"
+                        ? styles.messageSuccess
+                        : styles.messageError,
+                    ]}
+                  >
+                    <Ionicons
+                      name={
+                        message === "success"
+                          ? "checkmark-circle"
+                          : "alert-circle"
+                      }
+                      size={20}
                       color={message === "success" ? "#2e7d32" : "#d32f2f"}
                     />
-                    <Text style={[
-                      styles.messageText,
-                      message === "success" ? styles.messageSuccessText : styles.messageErrorText
-                    ]}>
-                      {message === "success" 
-                        ? `${uploadedFileName} uploaded successfully!` 
-                        : message
-                      }
+                    <Text
+                      style={[
+                        styles.messageText,
+                        message === "success"
+                          ? styles.messageSuccessText
+                          : styles.messageErrorText,
+                      ]}
+                    >
+                      {message === "success"
+                        ? `${uploadedFileName} uploaded successfully!`
+                        : message}
                     </Text>
                   </View>
                 )}
@@ -346,37 +391,42 @@ export default function PdfUploader() {
 
             <View style={styles.filterSection}>
               <Text style={styles.filterTitle}>
-                <Ionicons name="filter-outline" size={16} color="#333" /> Filter by City
+                <Ionicons name="filter-outline" size={16} color="#333" /> Filter
+                by City
               </Text>
               <View style={styles.filterContainer}>
                 <TouchableOpacity
                   style={[
                     styles.filterChip,
-                    filterCity === "All" && styles.filterChipActive
+                    filterCity === "All" && styles.filterChipActive,
                   ]}
                   onPress={() => setFilterCity("All")}
                 >
-                  <Text style={[
-                    styles.filterText,
-                    filterCity === "All" && styles.filterTextActive
-                  ]}>
+                  <Text
+                    style={[
+                      styles.filterText,
+                      filterCity === "All" && styles.filterTextActive,
+                    ]}
+                  >
                     All Cities
                   </Text>
                 </TouchableOpacity>
-                
+
                 {cities.map((city) => (
                   <TouchableOpacity
                     key={city}
                     style={[
                       styles.filterChip,
-                      filterCity === city && styles.filterChipActive
+                      filterCity === city && styles.filterChipActive,
                     ]}
                     onPress={() => setFilterCity(city)}
                   >
-                    <Text style={[
-                      styles.filterText,
-                      filterCity === city && styles.filterTextActive
-                    ]}>
+                    <Text
+                      style={[
+                        styles.filterText,
+                        filterCity === city && styles.filterTextActive,
+                      ]}
+                    >
                       {city}
                     </Text>
                   </TouchableOpacity>
@@ -386,7 +436,8 @@ export default function PdfUploader() {
 
             <View style={styles.listSection}>
               <Text style={styles.listTitle}>
-                <Ionicons name="document-text-outline" size={18} color="#333" /> Available E-Papers ({filteredList.length})
+                <Ionicons name="document-text-outline" size={18} color="#333" />{" "}
+                Available E-Papers ({filteredList.length})
               </Text>
 
               <FlatList
@@ -395,20 +446,32 @@ export default function PdfUploader() {
                 renderItem={({ item }) => (
                   <View style={styles.pdfCard}>
                     <TouchableOpacity
-                      onPress={() => setSelectedPdf(item.url)}
+                      // onPress={() => setSelectedPdf(item.url)}
+                      onPress={() => {
+                        // console.log(
+                        //   "🧾 item.name =",
+                        //   item.name,
+                        //   "type =",
+                        //   typeof item.name
+                        // );
+                        router.push(`/upload/${encodeURIComponent(item.name)}` as any);
+                        console.log("🧾 Checking headers for:", item.url);
+
+                        
+                      }}
                       style={styles.pdfCardContent}
                     >
                       <View style={styles.pdfIcon}>
                         <Ionicons name="document" size={32} color="#C62828" />
                       </View>
-                      
+
                       <View style={styles.pdfInfo}>
                         <Text style={styles.pdfName} numberOfLines={1}>
                           {item.name}
                         </Text>
                         <Text style={styles.pdfMeta}>
-                          <Ionicons name="location" size={12} color="#999" /> 
-                          {" "}{item.name.split("-")[0] || "Unknown"}
+                          <Ionicons name="location" size={12} color="#999" />{" "}
+                          {item.name.split("-")[0] || "Unknown"}
                         </Text>
                       </View>
 
@@ -420,22 +483,29 @@ export default function PdfUploader() {
                         onPress={() => deletePDF(item.path, item.name)}
                         style={styles.deleteButton}
                       >
-                        <Ionicons name="trash-outline" size={20} color="#d32f2f" />
+                        <Ionicons
+                          name="trash-outline"
+                          size={20}
+                          color="#d32f2f"
+                        />
                       </TouchableOpacity>
                     )}
                   </View>
                 )}
                 ListEmptyComponent={() => (
                   <View style={styles.emptyContainer}>
-                    <Ionicons name="folder-open-outline" size={64} color="#ccc" />
+                    <Ionicons
+                      name="folder-open-outline"
+                      size={64}
+                      color="#ccc"
+                    />
                     <Text style={styles.emptyText}>No PDFs found</Text>
                     <Text style={styles.emptySubtext}>
-                      {search 
-                        ? "Try a different search term" 
+                      {search
+                        ? "Try a different search term"
                         : filterCity === "All"
                         ? "Upload your first e-paper"
-                        : `No e-papers available for ${filterCity}`
-                      }
+                        : `No e-papers available for ${filterCity}`}
                     </Text>
                   </View>
                 )}
@@ -534,7 +604,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#f0f0f0",
   },
   // END NEW STYLES
-  
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",

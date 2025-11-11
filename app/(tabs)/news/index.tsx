@@ -225,25 +225,6 @@ const News = () => {
       ? newsList
       : newsList.filter((item) => item.category === selectedCategory);
 
-  // const renderItem = ({ item }: { item: NewsData }) => {
-  //   return (
-  //     <View style={styles.newsCard}>
-  //       <TouchableOpacity
-  //         onPress={() => setSelectedNews(item)}
-  //         activeOpacity={0.8}
-  //       >
-  //         <NewsListItem
-  //           item={item}
-  //           onEdit={handleEdit}
-  //           onDelete={() =>
-  //             handleDelete(item.id, item.image_path, item.video_path)
-  //           }
-  //           isHighlighted={item.id === highlightedNewsId}
-  //         />
-  //       </TouchableOpacity>
-  //     </View>
-  //   );
-  // };
   const renderItem = ({ item }: { item: NewsData }) => {
   return (
     <View style={styles.newsCard}>

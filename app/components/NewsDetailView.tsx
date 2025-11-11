@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
+  StatusBar,
   ActivityIndicator,
 } from "react-native";
 import * as FileSystem from "expo-file-system";
@@ -20,6 +21,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { NewsData } from "../../types/news";
 import Ionicons from "@expo/vector-icons/Ionicons"; // ✅ Add this import
 import { Share } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = {
   news: NewsData;
@@ -291,6 +293,7 @@ const NewsDetailView: React.FC<Props> = ({
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
     <View style={styles.container}>
       {/* ✅ Modern Header with Back Button */}
       <View style={styles.header}>
@@ -298,10 +301,10 @@ const NewsDetailView: React.FC<Props> = ({
           <Ionicons name="arrow-back" size={24} color="#fff" />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
-        <View style={{ marginTop: 20, alignItems: "center" }}>
+        <View style={{  alignItems: "center" }}>
           <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={20} color="#fff" />
-            <Text style={styles.shareButtonText}>Share News</Text>
+            {/* <Text style={styles.shareButtonText}>Share News</Text> */}
           </TouchableOpacity>
         </View>
 
@@ -502,7 +505,9 @@ const NewsDetailView: React.FC<Props> = ({
           </>
         )}
       </ScrollView>
+    
     </View>
+</SafeAreaView>
   );
 };
 
@@ -518,7 +523,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#C62828",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingTop: Platform.OS === "android" ? 40 : 12,
+    
   },
   backButton: {
     flexDirection: "row",
@@ -710,12 +715,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#25D366", // WhatsApp green
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 30,
+    padding: 8,
     gap: 8,
-    marginTop: 8,
   },
   shareButtonText: {
     color: "#fff",
