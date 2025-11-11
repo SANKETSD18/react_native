@@ -13,12 +13,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { NewsData } from "../../types/news";
-import NewsDetailView from "../components/NewsDetailView";
-import NewsDialog from "../components/NewsDialog";
-import NewsListItem from "../components/NewsItem";
-import NewsSkeletonLoader from "../components/Skeleton/NewsSkeletonLoader";
-import { useAuth } from "../providers/AuthProvider";
+import { NewsData } from "../../../types/news";
+import NewsDetailView from "../../components/NewsDetailView";
+import NewsDialog from "../../components/NewsDialog";
+import NewsListItem from "../../components/NewsItem";
+import NewsSkeletonLoader from "../../components/Skeleton/NewsSkeletonLoader";
+import { useAuth } from "../../providers/AuthProvider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const News = () => {

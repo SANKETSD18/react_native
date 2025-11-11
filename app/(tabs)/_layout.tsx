@@ -64,9 +64,9 @@ export default function TabLayout() {
 
       {/* 📰 News */}
       <Tabs.Screen
-        name="news"
+        name="news/index"
         options={{
-          title: "News",
+          title: "news",
           tabBarIcon: ({ focused, color }) => (
             <View
               style={[
@@ -81,6 +81,13 @@ export default function TabLayout() {
               />
             </View>
           ),
+        }}
+      />
+      {/* 🚫 Hidden dynamic route for deep links */}
+      <Tabs.Screen
+        name="news/[id]"
+        options={{
+          href: null, // hides it from tab bar completely
         }}
       />
 

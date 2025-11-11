@@ -10,7 +10,6 @@ import { useNavigationContainerRef } from "expo-router";
 function AppContent() {
   const path = usePathname();
   const { setIsDeepLinkChecked, setIsRecoveryMode } = useDeepLink();
- 
 
   useEffect(() => {
     const checkRecoveryOnReload = async () => {
@@ -58,7 +57,7 @@ function AppContent() {
         const id = url.split("/news/")[1];
         // console.log("📰 Navigating to news detail with ID:", id);
         await AsyncStorage.setItem("highlighted_news_id", id);
-        router.push("/news");
+        router.push("/(tabs)/news");
       }
 
       try {
