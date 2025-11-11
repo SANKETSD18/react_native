@@ -20,6 +20,7 @@ import NewsListItem from "../../components/NewsItem";
 import NewsSkeletonLoader from "../../components/Skeleton/NewsSkeletonLoader";
 import { useAuth } from "../../providers/AuthProvider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 
 const News = () => {
   const { user } = useAuth();
@@ -224,25 +225,46 @@ const News = () => {
       ? newsList
       : newsList.filter((item) => item.category === selectedCategory);
 
+  // const renderItem = ({ item }: { item: NewsData }) => {
+  //   return (
+  //     <View style={styles.newsCard}>
+  //       <TouchableOpacity
+  //         onPress={() => setSelectedNews(item)}
+  //         activeOpacity={0.8}
+  //       >
+  //         <NewsListItem
+  //           item={item}
+  //           onEdit={handleEdit}
+  //           onDelete={() =>
+  //             handleDelete(item.id, item.image_path, item.video_path)
+  //           }
+  //           isHighlighted={item.id === highlightedNewsId}
+  //         />
+  //       </TouchableOpacity>
+  //     </View>
+  //   );
+  // };
   const renderItem = ({ item }: { item: NewsData }) => {
-    return (
-      <View style={styles.newsCard}>
-        <TouchableOpacity
-          onPress={() => setSelectedNews(item)}
-          activeOpacity={0.8}
-        >
-          <NewsListItem
-            item={item}
-            onEdit={handleEdit}
-            onDelete={() =>
-              handleDelete(item.id, item.image_path, item.video_path)
-            }
-            isHighlighted={item.id === highlightedNewsId}
-          />
-        </TouchableOpacity>
-      </View>
-    );
-  };
+  return (
+    <View style={styles.newsCard}>
+      <TouchableOpacity
+        onPress={() => router.push(`/news/${item.id}`)} // ✅ route-based navigation
+        activeOpacity={0.8}
+      >
+        <NewsListItem
+          item={item}
+          onEdit={handleEdit}
+          onDelete={() =>
+            handleDelete(item.id, item.image_path, item.video_path)
+          }
+          isHighlighted={item.id === highlightedNewsId}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+
 
   const renderHeader = () => (
     <>
@@ -350,6 +372,7 @@ const News = () => {
       />
     );
   }
+  
 
   return (
     <SafeAreaView style={styles.container}>

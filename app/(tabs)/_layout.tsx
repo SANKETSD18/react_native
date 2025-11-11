@@ -20,8 +20,8 @@ export default function TabLayout() {
           height: 78,
           paddingTop: 10,
           paddingBottom: 8,
-          borderTopWidth: 0, 
-          
+          borderTopWidth: 0,
+
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.1,
@@ -64,9 +64,9 @@ export default function TabLayout() {
 
       {/* 📰 News */}
       <Tabs.Screen
-        name="news/index"
+        name="news"
         options={{
-          title: "news",
+          title: "News",
           tabBarIcon: ({ focused, color }) => (
             <View
               style={[
@@ -81,13 +81,6 @@ export default function TabLayout() {
               />
             </View>
           ),
-        }}
-      />
-      {/* 🚫 Hidden dynamic route for deep links */}
-      <Tabs.Screen
-        name="news/[id]"
-        options={{
-          href: null, // hides it from tab bar completely
         }}
       />
 

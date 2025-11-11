@@ -18,10 +18,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { supabase } from "../../lib/supabaseClient";
-import PdfPreview from "../components/pdfPreview";
-import UploadSkeletonLoader from "../components/Skeleton/UploadSkeletonLoader";
-import { useAuth } from "../providers/AuthProvider";
+import { supabase } from "../../../lib/supabaseClient";
+import PdfPreview from "../../components/pdfPreview";
+import UploadSkeletonLoader from "../../components/Skeleton/UploadSkeletonLoader";
+import { useAuth } from "../../providers/AuthProvider";
 
 const BUCKET = "epaper-pdf";
 
