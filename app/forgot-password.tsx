@@ -14,10 +14,12 @@ import {
 import { router } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { supabase } from "../lib/supabaseClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  
 
   const handleResetPassword = async () => {
     const trimmedEmail = email.trim().toLowerCase();

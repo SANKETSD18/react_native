@@ -29,14 +29,6 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "pradesh-times",
-              "host": "reset-password"
-            },
-            {
-              "scheme": "pradesh-times",
-              "host": "forgot-password"
-            },
-            {
               "scheme": "pradesh-times"
             }
           ],

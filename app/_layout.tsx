@@ -9,32 +9,43 @@ import { useNavigationContainerRef } from "expo-router";
 
 function AppContent() {
   const path = usePathname();
-  const { setIsDeepLinkChecked, setIsRecoveryMode } = useDeepLink();
+  const { setIsDeepLinkChecked } = useDeepLink();
 
+  // useEffect(() => {
+  //   const showAllLocalStorage = async () => {
+  //     try {
+  //       const keys = await AsyncStorage.getAllKeys();
+  //       const items = await AsyncStorage.multiGet(keys);
+
+  //       console.log("📦 Local Storage Items:");
+  //       items.forEach(([key, value]) => {
+  //         console.log(`• ${key}:`, value);
+  //       });
+  //     } catch (error) {
+  //       console.log("❌ Error reading local storage:", error);
+  //     }
+  //   };
+
+  //   showAllLocalStorage();
+  // }, []);
   useEffect(() => {
-    const checkRecoveryOnReload = async () => {
-      const isRecovery = await AsyncStorage.getItem("is_recovery");
+    const handleReloadRecovery = async () => {
+      const flag = await AsyncStorage.getItem("is_recovery_mode");
+      if (flag === "true") {
+        console.log("🔄 Reload detected during recovery → clearing session");
 
-      if (isRecovery === "true") {
-        console.log(
-          "♻️ App reload detected during recovery - clearing session"
-        );
+        // Supabase session clear
+        await supabase.auth.signOut();
 
-        // clear temp recovery flag first
-        await AsyncStorage.removeItem("is_recovery");
+        // Local storage session भी clear
+        const keys = await AsyncStorage.getAllKeys();
+        await AsyncStorage.multiRemove(keys);
 
-        try {
-          await supabase.auth.signOut();
-          setIsRecoveryMode(false);
-          router.replace("/forgot-password"); // navigate safely
-          console.log("🚪 Recovery session cleared successfully");
-        } catch (err) {
-          console.error("❌ Error clearing recovery session:", err);
-        }
+        router.replace("/(tabs)");
       }
     };
 
-    checkRecoveryOnReload();
+    handleReloadRecovery();
   }, []);
 
   useEffect(() => {
@@ -73,18 +84,9 @@ function AppContent() {
 
         if (token && refresh_token && flowType === "recovery") {
           await AsyncStorage.setItem("is_recovery_mode", "true");
-
-          setIsRecoveryMode(true);
-
-          console.log("🔑 token and refesh token", token, refresh_token);
-
-          const resetUrl = `/reset-password?access_token=${encodeURIComponent(
-            token
-          )}&refresh_token=${encodeURIComponent(refresh_token)}&type=recovery`;
-
-          router.replace(resetUrl as `/reset-password?${string}`);
+          await AsyncStorage.setItem("token", token);
+          await AsyncStorage.setItem("refresh_token", refresh_token);
         }
-
         setIsDeepLinkChecked(true);
       } catch (err) {
         console.log("❌ Error while parsing link:", err);
