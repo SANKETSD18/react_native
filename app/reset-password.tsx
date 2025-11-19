@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabaseClient";
-
 import { useAuth } from "../app/providers/AuthProvider";
 
 export default function ResetPasswordScreen() {
@@ -78,7 +77,7 @@ export default function ResetPasswordScreen() {
           style: "destructive",
           onPress: async () => {
             console.log("🚪 Logging out...");
-            
+
             await supabase.auth.signOut(); // ✅ Small delay to ensure logout completes
             setTimeout(() => {
               router.replace("/(tabs)"); // Or your login route
@@ -114,10 +113,9 @@ export default function ResetPasswordScreen() {
     try {
       console.log("🔄 Updating password...");
 
-      const { error } = await supabase.auth.updateUser({
-        password: trimmedNewPassword,
+      const { data, error } = await supabase.auth.updateUser({
+        password: newPassword.trim(),
       });
-
       if (error) {
         console.error("❌ Update error:", error.message);
         setLoading(false);
@@ -134,7 +132,12 @@ export default function ResetPasswordScreen() {
                 text: "OK",
                 onPress: async () => {
                   await supabase.auth.signOut();
-                  
+                  await AsyncStorage.removeItem("is_recovery_mode");
+                  await AsyncStorage.removeItem("token");
+                  await AsyncStorage.removeItem("refresh_token");
+                  const keys = await AsyncStorage.getAllKeys();
+                  await AsyncStorage.multiRemove(keys);
+
                   router.replace("/forgot-password");
                 },
               },
@@ -149,7 +152,7 @@ export default function ResetPasswordScreen() {
       console.log("🎉 Password updated successfully!");
 
       // ✅ Wait for auth events to complete
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // await new Promise((resolve) => setTimeout(resolve, 500));
 
       setLoading(false);
 
@@ -161,13 +164,14 @@ export default function ResetPasswordScreen() {
             text: "Login Now",
             onPress: async () => {
               console.log("🚪 Signing out after password reset...");
-              // setIsRecoveryMode(false); // ✅ Turn off recovery mode first
-              await supabase.auth.signOut();
 
-              // ✅ Small delay before navigation
-              setTimeout(() => {
-                router.replace("/(tabs)");
-              }, 300);
+              await supabase.auth.signOut();
+              await AsyncStorage.removeItem("is_recovery_mode");
+              await AsyncStorage.removeItem("token");
+              await AsyncStorage.removeItem("refresh_token");
+              const keys = await AsyncStorage.getAllKeys();
+              await AsyncStorage.multiRemove(keys);
+              router.replace("/(tabs)");
             },
           },
         ],

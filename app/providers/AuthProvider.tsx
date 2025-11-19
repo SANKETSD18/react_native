@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "../../lib/supabaseClient";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type AuthContextType = {
   user: User | null;
@@ -77,13 +77,20 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
       // 3️⃣ Normal SIGNED_IN
       // -------------------------
       if (event === "SIGNED_IN" && currentSession?.user) {
-        // console.log("🔔 SIGNED_IN fired");
+        const recovery = await AsyncStorage.getItem("is_recovery_mode");
+
+        if (recovery === "true") {
+          console.log("⛔ Recovery mode → redirect skipped");
+          
+
+          setSession(currentSession);
+          setUser(currentSession.user);
+          return;
+        }
+
+        // NORMAL LOGIN FLOW
         setSession(currentSession);
         setUser(currentSession.user);
-
-        const r = await fetchRole(currentSession.user.email || "");
-        setRole(r);
-
         router.replace("/(tabs)");
       }
 
@@ -107,6 +114,10 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
         console.log("🔄 Token Refreshed");
         setSession(currentSession);
         setUser(currentSession.user);
+      }
+      if (event === "PASSWORD_RECOVERY") {
+        console.log("⚠ IGNORING SIGNED_IN because recovery mode active");
+        return;
       }
     });
 

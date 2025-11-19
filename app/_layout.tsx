@@ -1,11 +1,10 @@
+import { supabase } from "@/lib/supabaseClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import { router, Stack, usePathname } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import AuthProvider from "../app/providers/AuthProvider";
 import { DeepLinkProvider, useDeepLink } from "../context/DeepLinkContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { supabase } from "@/lib/supabaseClient";
-import { useNavigationContainerRef } from "expo-router";
 
 function AppContent() {
   const path = usePathname();
