@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#C62828" barStyle="light-content" />
+    
 
       {/* Header */}
       <View style={styles.header}>

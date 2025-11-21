@@ -255,7 +255,6 @@ export default function PdfUploader() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#C62828" barStyle="light-content" />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}

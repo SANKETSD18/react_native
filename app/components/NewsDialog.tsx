@@ -181,39 +181,40 @@ const NewsDialog: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
     setFileName(null);
     setImageUrl(null);
     setVideoUrl(null);
-  };const pickAndUploadMedia = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images", "videos"],
-        allowsEditing: true,
-        quality: 1,
-      });
-
-      if (result.canceled) return;
-
-      const asset = result.assets[0];
-      let uri = asset.uri;
-      if (Platform.OS === "android" && !uri.startsWith("file://")) {
-        uri = "file://" + uri;
-      }
-
-      const fileExt = asset.type === "image" ? "jpg" : "mp4";
-      const fileNameLocal = asset.fileName || `${Date.now()}.${fileExt}`;
-
-      setFileName(fileNameLocal);
-      setImageUrl(null);
-      setVideoUrl(null);
-
-      setPicked({
-        uri,
-        type: asset.type === "image" ? "image" : "video",
-        fileName: fileNameLocal,
-        contentType: asset.type === "image" ? "image/jpeg" : "video/mp4",
-      });
-    } catch (error) {
-      console.error(error);
-    }
   };
+  // const pickAndUploadMedia = async () => {
+  //   try {
+  //     const result = await ImagePicker.launchImageLibraryAsync({
+  //       mediaTypes: ["images", "videos"],
+  //       allowsEditing: true,
+  //       quality: 1,
+  //     });
+
+  //     if (result.canceled) return;
+
+  //     const asset = result.assets[0];
+  //     let uri = asset.uri;
+  //     if (Platform.OS === "android" && !uri.startsWith("file://")) {
+  //       uri = "file://" + uri;
+  //     }
+
+  //     const fileExt = asset.type === "image" ? "jpg" : "mp4";
+  //     const fileNameLocal = asset.fileName || `${Date.now()}.${fileExt}`;
+
+  //     setFileName(fileNameLocal);
+  //     setImageUrl(null);
+  //     setVideoUrl(null);
+
+  //     setPicked({
+  //       uri,
+  //       type: asset.type === "image" ? "image" : "video",
+  //       fileName: fileNameLocal,
+  //       contentType: asset.type === "image" ? "image/jpeg" : "video/mp4",
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // };
 
   const resetForm = async () => {
     setTitle("");

@@ -58,16 +58,21 @@ export default function PdfViewerScreen() {
   // ✅ Share PDF file link
 
   const handleShare = async () => {
-    const fileName = decodeURIComponent(file);
+    try {
+      const fileName = decodeURIComponent(file);
 
-    const deepLink = `pradesh-times://upload/${encodeURIComponent(fileName)}`;
+      const deepLink = `pradesh-times://upload/${encodeURIComponent(fileName)}`;
 
-    await Share.share({
-      message: `📰 आज का E-Paper: ${fileName}
+      await Share.share({
+        message: `📰 E-Paper: ${fileName}
 
-पूरी E-Paper यहाँ पढ़ें:
+E-Paper यहाँ पढ़ें:
 ${deepLink}`,
-    });
+      });
+    } catch (error) {
+      console.error("Share error:", error);
+      Alert.alert("Error", "Unable to share this news right now.");
+    }
   };
 
   // ✅ Loading view
@@ -166,8 +171,8 @@ const styles = StyleSheet.create({
   pdfContainer: { flex: 1, backgroundColor: "#e0e0e0" },
   pdf: { flex: 1, width: "100%" },
 
-//   pdfContainer: { flex: 1 },
-// pdf: { flex: 1, width: Dimensions.get("window").width },
+  //   pdfContainer: { flex: 1 },
+  // pdf: { flex: 1, width: Dimensions.get("window").width },
 
   errorText: {
     fontSize: 16,

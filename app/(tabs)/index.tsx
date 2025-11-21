@@ -1,22 +1,22 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
+  ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  ActivityIndicator,
 } from "react-native";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../providers/AuthProvider";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
 
 export default function AuthScreen() {
   const [email, setEmail] = useState("");
@@ -176,7 +176,7 @@ export default function AuthScreen() {
   if (sessionEmail) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#C62828" barStyle="light-content" />
+       
 
         <View style={styles.loggedInContainer}>
           <View style={styles.loggedInHeader}>
@@ -198,17 +198,17 @@ export default function AuthScreen() {
             <View style={styles.roleInfo}>
               <Text style={styles.roleLabel}>Your Role</Text>
               {role ? (
-      <Text
-        style={[
-          styles.roleValue,
-          { color: role === "admin" ? "#2e7d32" : "#1976d2" },
-        ]}
-      >
-        {role === "admin" ? "👑 Admin" : "👤 Guest"}
-      </Text>
-    ) : (
-      <Text style={styles.roleValue}>—</Text> // 👈 blank dash if null
-    )}
+                <Text
+                  style={[
+                    styles.roleValue,
+                    { color: role === "admin" ? "#2e7d32" : "#1976d2" },
+                  ]}
+                >
+                  {role === "admin" ? "👑 Admin" : "👤 Guest"}
+                </Text>
+              ) : (
+                <Text style={styles.roleValue}>—</Text> // 👈 blank dash if null
+              )}
               {/* <Text
                 style={[
                   styles.roleValue,
@@ -264,7 +264,7 @@ export default function AuthScreen() {
   // Login/Sign Up View
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#C62828" barStyle="light-content" />
+      
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -699,6 +699,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 30,
     marginBottom: 20,
+    marginTop: 20,
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

@@ -1,22 +1,20 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, router, useLocalSearchParams } from "expo-router";
-import { use, useEffect, useState } from "react";
+import { Stack, router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  BackHandler,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../app/providers/AuthProvider";
+import { supabase } from "../lib/supabaseClient";
 
 export default function ResetPasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
@@ -186,23 +184,33 @@ export default function ResetPasswordScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTitle: "Reset Password",
-          headerStyle: { backgroundColor: "#C62828" },
-          headerTintColor: "#fff",
-          headerLeft: () => (
-            <TouchableOpacity onPress={handleCancel} style={{ marginLeft: 10 }}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-          ),
-          gestureEnabled: false,
-        }}
-      />
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "#fff" }}
+        edges={["top"]}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={styles.container} edges={["top"]}>
-        <StatusBar backgroundColor="#C62828" barStyle="light-content" />
+        {/* Custom Header  */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "#C62828",
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+          }}
+        >
+          <TouchableOpacity onPress={handleCancel}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+
+          <Text style={{ fontSize: 18, color: "#fff", fontWeight: "bold" }}>
+            Reset Password
+          </Text>
+
+          <View style={{ width: 24 }} />
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}

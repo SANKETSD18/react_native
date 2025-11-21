@@ -13,6 +13,7 @@ import { useAuth } from "../providers/AuthProvider";
 type Props = {
   item: NewsData;
   onEdit: (item: NewsData) => void;
+  onPress: () => void;
   onDelete: () => void;
   isHighlighted?: boolean;
 };
@@ -21,6 +22,7 @@ const NewsListItem: React.FC<Props> = ({
   item,
   onEdit,
   onDelete,
+  onPress,
   isHighlighted,
 }) => {
   const { user } = useAuth();
@@ -65,7 +67,12 @@ const NewsListItem: React.FC<Props> = ({
         />
       )}
 
-      <View style={[styles.itemContainer, { zIndex: 2 }]}>
+      <TouchableOpacity
+        style={styles.itemContainer}
+        onPress={onPress}
+        activeOpacity={0.9}
+      >
+        {/* <View style={[styles.itemContainer, { zIndex: 2 }]}> */}
         {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.image} />
         ) : (
@@ -84,7 +91,7 @@ const NewsListItem: React.FC<Props> = ({
 
         {role === "admin" && (
           <View style={styles.actionContainer}>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={() => onEdit(item)}
               style={styles.actionButton}
             >
@@ -92,10 +99,30 @@ const NewsListItem: React.FC<Props> = ({
             </TouchableOpacity>
             <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
               <Text style={styles.actionText}>Delete</Text>
+            </TouchableOpacity> */}
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onEdit(item);
+              }}
+              style={styles.actionButton}
+            >
+              <Text style={styles.actionText}>Edit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              style={styles.actionButton}
+            >
+              <Text style={styles.actionText}>Delete</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
+        {/* </View> */}
+      </TouchableOpacity>
     </View>
   );
 };
@@ -160,4 +187,3 @@ const styles = StyleSheet.create({
 });
 
 export default NewsListItem;
-

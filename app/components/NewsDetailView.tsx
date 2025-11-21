@@ -89,6 +89,7 @@ const NewsDetailView: React.FC<Props> = ({
     uri: string,
     type: "image" | "video",
     newsId: string,
+
     createdAt: string
   ): string => {
     const date = formatDate(createdAt);
@@ -105,7 +106,7 @@ const NewsDetailView: React.FC<Props> = ({
       throw error;
     }
   };
-  
+
   const uploadFileToBucket = async (
     uri: string,
     path: string,
@@ -291,26 +292,7 @@ const NewsDetailView: React.FC<Props> = ({
       Alert.alert("Error", "Unable to share this news right now.");
     }
   };
-  //   const handleShare = async () => {
-  //   try {
-  //     const slug = slugify(news.title);
-  //     console.log(slug)
-
-  //     // FINAL CLEAN LINK
-  //     const deepLink = `pradesh-times://news/${news.id}/${slug}`;
-
-  //     await Share.share({
-  //       message: `📰 ${news.title}
-
-  // ${news.description}
-
-  // पूरी खबर यहाँ पढ़ें:
-  // ${deepLink}`,
-  //     });
-  //   } catch (error) {
-  //     Alert.alert("Error", "Unable to share this news right now.");
-  //   }
-  // };
+ 
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -321,13 +303,16 @@ const NewsDetailView: React.FC<Props> = ({
             <Ionicons name="arrow-back" size={24} color="#fff" />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-          <View style={{ alignItems: "center" }}>
-            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-              <Ionicons name="share-social-outline" size={20} color="#fff" />
-              {/* <Text style={styles.shareButtonText}>Share News</Text> */}
-            </TouchableOpacity>
-          </View>
-
+          {!editable && (
+            <View style={{ alignItems: "center" }}>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={handleShare}
+              >
+                <Ionicons name="share-social-outline" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
           {editable && (
             <View style={styles.editBadge}>
               <Ionicons name="create-outline" size={16} color="#fff" />
@@ -427,7 +412,7 @@ const NewsDetailView: React.FC<Props> = ({
               {/* ✅ Title Input */}
               <View style={styles.inputSection}>
                 <Text style={styles.inputLabel}>
-                  <Ionicons name="newspaper-outline" size={16} color="#666" />{" "}
+                  <Ionicons name="newspaper-outline" size={16} color="#666" />
                   Title
                 </Text>
                 <TextInput
@@ -446,7 +431,7 @@ const NewsDetailView: React.FC<Props> = ({
                     name="document-text-outline"
                     size={16}
                     color="#666"
-                  />{" "}
+                  />
                   Description
                 </Text>
                 <TextInput

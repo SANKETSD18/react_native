@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -14,13 +16,10 @@ import {
   View,
 } from "react-native";
 import { NewsData } from "../../../types/news";
-import NewsDetailView from "../../components/NewsDetailView";
 import NewsDialog from "../../components/NewsDialog";
 import NewsListItem from "../../components/NewsItem";
 import NewsSkeletonLoader from "../../components/Skeleton/NewsSkeletonLoader";
 import { useAuth } from "../../providers/AuthProvider";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
 
 const News = () => {
   const { user } = useAuth();
@@ -29,9 +28,9 @@ const News = () => {
   const username = email?.split("@")[0] || "User";
 
   const [showDialog, setShowDialog] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  // const [isEditMode, setIsEditMode] = useState(false);
   const [newsList, setNewsList] = useState<NewsData[]>([]);
-  const [selectedNews, setSelectedNews] = useState<NewsData | null>(null);
+  // const [selectedNews, setSelectedNews] = useState<NewsData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -123,8 +122,8 @@ const News = () => {
       Alert.alert("Unauthorized", "Only admins can edit news");
       return;
     }
-    setSelectedNews(item);
-    setIsEditMode(true);
+    // setSelectedNews(item);
+    // setIsEditMode(true);
   };
 
   const handleDelete = async (
@@ -211,8 +210,8 @@ const News = () => {
     }
 
     fetchNews();
-    setSelectedNews(null);
-    setIsEditMode(false);
+    // setSelectedNews(null);
+    // setIsEditMode(false);
   };
 
   const handleNewsSubmit = (insertedNews: NewsData) => {
@@ -226,26 +225,37 @@ const News = () => {
       : newsList.filter((item) => item.category === selectedCategory);
 
   const renderItem = ({ item }: { item: NewsData }) => {
-  return (
-    <View style={styles.newsCard}>
-      <TouchableOpacity
-        onPress={() => router.push(`/news/${item.id}`)} // ✅ route-based navigation
-        activeOpacity={0.8}
-      >
+    return (
+      <View style={styles.newsCard}>
+        {/* <TouchableOpacity
+          onPress={() => router.push(`/news/${item.id}`)} // ✅ route-based navigation
+          activeOpacity={0.8}
+        >
+          <NewsListItem
+            
+            item={item}
+            // onEdit={handleEdit}
+            onEdit={() => {
+              router.push(`/news/${item.id}?edit=true`);
+            }}
+            onDelete={() =>
+              handleDelete(item.id, item.image_path, item.video_path)
+            }
+            isHighlighted={item.id === highlightedNewsId}
+          />
+        </TouchableOpacity> */}
         <NewsListItem
           item={item}
-          onEdit={handleEdit}
+          onPress={() => router.push(`/news/${item.id}`)}
+          onEdit={(news) => router.push(`/news/${news.id}?edit=true`)}
           onDelete={() =>
             handleDelete(item.id, item.image_path, item.video_path)
           }
           isHighlighted={item.id === highlightedNewsId}
         />
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-
+      </View>
+    );
+  };
 
   const renderHeader = () => (
     <>
@@ -340,24 +350,23 @@ const News = () => {
     </View>
   );
 
-  if (selectedNews) {
-    return (
-      <NewsDetailView
-        news={selectedNews}
-        onBack={() => {
-          setSelectedNews(null);
-          setIsEditMode(false);
-        }}
-        editable={isEditMode}
-        onSave={handleNewsUpdate}
-      />
-    );
-  }
-  
+  // if (selectedNews) {
+  //   return (
+  //     <NewsDetailView
+  //       news={selectedNews}
+  //       onBack={() => {
+  //         setSelectedNews(null);
+  //         setIsEditMode(false);
+  //       }}
+  //       editable={isEditMode}
+  //       onSave={handleNewsUpdate}
+  //     />
+  //   );
+  // }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#C62828" barStyle="light-content" />
+     
 
       {/* ✅ Modern Header */}
       <View style={styles.header}>
