@@ -9,6 +9,7 @@ import {
   StatusBar,
   Share,
   Alert,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -55,20 +56,18 @@ export default function PdfViewerScreen() {
   }, [file]);
 
   // ✅ Share PDF file link
+
   const handleShare = async () => {
-    if (!pdfUrl) {
-      Alert.alert("Error", "PDF not loaded yet!");
-      return;
-    }
-    try {
-      await Share.share({
-        title: "Share E-Paper",
-        message: `📰 Check out this E-Paper: ${decodeURIComponent(file)}\n\nRead here: ${pdfUrl}`,
-        url: pdfUrl,
-      });
-    } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to share PDF");
-    }
+    const fileName = decodeURIComponent(file);
+
+    const deepLink = `pradesh-times://upload/${encodeURIComponent(fileName)}`;
+
+    await Share.share({
+      message: `📰 आज का E-Paper: ${fileName}
+
+पूरी E-Paper यहाँ पढ़ें:
+${deepLink}`,
+    });
   };
 
   // ✅ Loading view
@@ -104,7 +103,10 @@ export default function PdfViewerScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
 
@@ -163,6 +165,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 16, fontWeight: "bold", color: "#fff" },
   pdfContainer: { flex: 1, backgroundColor: "#e0e0e0" },
   pdf: { flex: 1, width: "100%" },
+
+//   pdfContainer: { flex: 1 },
+// pdf: { flex: 1, width: Dimensions.get("window").width },
+
   errorText: {
     fontSize: 16,
     fontWeight: "600",

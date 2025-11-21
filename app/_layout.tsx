@@ -70,6 +70,20 @@ function AppContent() {
         router.push("/(tabs)/news");
       }
 
+      if (url.startsWith("pradesh-times://upload/")) {
+        const file = url.split("pradesh-times://upload/")[1];
+        console.log("📄 Navigating to upload with file:", file);
+
+        if (file) {
+          const decoded = decodeURIComponent(file);
+
+        
+          router.push("/(tabs)/upload");
+
+          await AsyncStorage.setItem("highlighted_pdf_id", decoded);
+        }
+      }
+
       try {
         const parsed = Linking.parse(fixedUrl);
         // console.log("🧩 Parsed link printed ✅", parsed);

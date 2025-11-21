@@ -3,14 +3,13 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Platform,
-  RefreshControl,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -19,10 +18,11 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../../../lib/supabaseClient";
-import PdfPreview from "../../components/pdfPreview";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import UploadSkeletonLoader from "../../components/Skeleton/UploadSkeletonLoader";
 import { useAuth } from "../../providers/AuthProvider";
-import { router } from "expo-router";
 
 const BUCKET = "epaper-pdf";
 
@@ -49,11 +49,17 @@ export default function PdfUploader() {
   const [message, setMessage] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const { role } = useAuth();
-  const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
+
   const [refreshing, setRefreshing] = useState(false);
   const [filterCity, setFilterCity] = useState<string>("All");
   const [initialLoading, setInitialLoading] = useState(true);
   const [uploadSectionExpanded, setUploadSectionExpanded] = useState(false);
+
+  const [highlightedPdf, setHighlightedPdf] = useState<string | null>(null);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const innerRef = useRef<View>(null);
+  const itemRefs = useRef<Record<string, View | null>>({});
 
   const fetchPDFs = useCallback(async () => {
     try {
@@ -198,6 +204,46 @@ export default function PdfUploader() {
       .startsWith(filterCity.toLowerCase());
     return matchesSearch && matchesCity;
   });
+  // ← filteredList यहाँ defined है
+
+  // pdf highlightedPdf
+  useEffect(() => {
+    const checkHighlight = async () => {
+      const id = await AsyncStorage.getItem("highlighted_pdf_id");
+      if (!id) return;
+
+      setHighlightedPdf(id);
+      await AsyncStorage.removeItem("highlighted_pdf_id");
+
+      setTimeout(() => {
+        setHighlightedPdf(null);
+      }, 6000);
+    };
+
+    checkHighlight();
+  }, []);
+
+  // pdf highlightedPdf scroll
+  useEffect(() => {
+    if (!highlightedPdf) return;
+
+    const target = itemRefs.current[highlightedPdf];
+    if (!target || !innerRef.current || !scrollRef.current) return;
+
+    // Layout settle hone do
+    requestAnimationFrame(() => {
+      target.measureLayout(
+        innerRef.current!,
+        (x, y) => {
+          scrollRef.current?.scrollTo({
+            y: y - 80,
+            animated: true,
+          });
+        },
+        () => {}
+      );
+    });
+  }, [highlightedPdf, filteredList]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-IN", {
@@ -207,323 +253,321 @@ export default function PdfUploader() {
     });
   };
 
-  // if (selectedPdf) {
-  //   return <PdfPreview pdfUrl={selectedPdf} goBack={() => setSelectedPdf(null)} />;
-  // }
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#C62828" barStyle="light-content" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>📰 E-Paper</Text>
-          <Text style={styles.headerSubtitle}>Daily Digital Newspaper</Text>
-        </View>
-        {role === "admin" && (
-          <View style={styles.adminBadge}>
-            <Ionicons name="shield-checkmark" size={16} color="#fff" />
-            <Text style={styles.adminBadgeText}>Admin</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.content}>
-        {/* ✅ COLLAPSIBLE ADMIN UPLOAD SECTION */}
-        {role === "admin" && (
-          <View style={styles.uploadSection}>
-            {/* ✅ COLLAPSIBLE HEADER */}
-            <TouchableOpacity
-              onPress={() => setUploadSectionExpanded(!uploadSectionExpanded)}
-              style={styles.uploadSectionHeader}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.sectionTitle}>
-                <Ionicons
-                  name="cloud-upload-outline"
-                  size={18}
-                  color="#C62828"
-                />{" "}
-                Upload E-Paper
-              </Text>
-              <View style={styles.expandIndicator}>
-                <Text style={styles.expandText}>
-                  {uploadSectionExpanded ? "Collapse" : "Expand"}
-                </Text>
-                <Ionicons
-                  name={uploadSectionExpanded ? "chevron-up" : "chevron-down"}
-                  size={24}
-                  color="#666"
-                />
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 0 }}
+      >
+        <View ref={innerRef}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerTitle}>📰 E-Paper</Text>
+              <Text style={styles.headerSubtitle}>Daily Digital Newspaper</Text>
+            </View>
+            {role === "admin" && (
+              <View style={styles.adminBadge}>
+                <Ionicons name="shield-checkmark" size={16} color="#fff" />
+                <Text style={styles.adminBadgeText}>Admin</Text>
               </View>
-            </TouchableOpacity>
+            )}
+          </View>
 
-            {/* ✅ COLLAPSIBLE CONTENT */}
-            {uploadSectionExpanded && (
-              <View style={styles.uploadContent}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    <Ionicons name="location-outline" size={14} color="#666" />{" "}
-                    Select City
-                  </Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={selectedCity}
-                      onValueChange={(itemValue) => setSelectedCity(itemValue)}
-                      style={styles.picker}
-                    >
-                      {cities.map((city) => (
-                        <Picker.Item key={city} label={city} value={city} />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    <Ionicons name="calendar-outline" size={14} color="#666" />{" "}
-                    Select Date
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <Ionicons name="calendar" size={20} color="#C62828" />
-                    <Text style={styles.dateButtonText}>
-                      {formatDate(selectedDate)}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {showDatePicker && (
-                    <DateTimePicker
-                      value={selectedDate}
-                      mode="date"
-                      display={Platform.OS === "ios" ? "spinner" : "default"}
-                      onChange={(event, date) => {
-                        setShowDatePicker(Platform.OS === "ios");
-                        if (date) setSelectedDate(date);
-                      }}
-                    />
-                  )}
-                </View>
-
+          <View style={styles.content}>
+            {/* ✅ COLLAPSIBLE ADMIN UPLOAD SECTION */}
+            {role === "admin" && (
+              <View style={styles.uploadSection}>
+                {/* ✅ COLLAPSIBLE HEADER */}
                 <TouchableOpacity
-                  style={[
-                    styles.uploadButton,
-                    loading && styles.uploadButtonDisabled,
-                  ]}
-                  onPress={uploadPDF}
-                  disabled={loading}
+                  onPress={() =>
+                    setUploadSectionExpanded(!uploadSectionExpanded)
+                  }
+                  style={styles.uploadSectionHeader}
+                  activeOpacity={0.7}
                 >
-                  {loading ? (
-                    <View style={styles.uploadingContainer}>
-                      <ActivityIndicator size="small" color="#fff" />
-                      <Text style={styles.uploadButtonText}>Uploading...</Text>
-                    </View>
-                  ) : (
-                    <>
-                      <Ionicons name="cloud-upload" size={20} color="#fff" />
-                      <Text style={styles.uploadButtonText}>Upload PDF</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                {message && (
-                  <View
-                    style={[
-                      styles.messageContainer,
-                      message === "success"
-                        ? styles.messageSuccess
-                        : styles.messageError,
-                    ]}
-                  >
+                  <Text style={styles.sectionTitle}>
+                    <Ionicons
+                      name="cloud-upload-outline"
+                      size={18}
+                      color="#C62828"
+                    />{" "}
+                    Upload E-Paper
+                  </Text>
+                  <View style={styles.expandIndicator}>
+                    <Text style={styles.expandText}>
+                      {uploadSectionExpanded ? "Collapse" : "Expand"}
+                    </Text>
                     <Ionicons
                       name={
-                        message === "success"
-                          ? "checkmark-circle"
-                          : "alert-circle"
+                        uploadSectionExpanded ? "chevron-up" : "chevron-down"
                       }
-                      size={20}
-                      color={message === "success" ? "#2e7d32" : "#d32f2f"}
+                      size={24}
+                      color="#666"
                     />
-                    <Text
+                  </View>
+                </TouchableOpacity>
+
+                {/* ✅ COLLAPSIBLE CONTENT */}
+                {uploadSectionExpanded && (
+                  <View style={styles.uploadContent}>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>
+                        <Ionicons
+                          name="location-outline"
+                          size={14}
+                          color="#666"
+                        />{" "}
+                        Select City
+                      </Text>
+                      <View style={styles.pickerContainer}>
+                        <Picker
+                          selectedValue={selectedCity}
+                          onValueChange={(itemValue) =>
+                            setSelectedCity(itemValue)
+                          }
+                          style={styles.picker}
+                        >
+                          {cities.map((city) => (
+                            <Picker.Item key={city} label={city} value={city} />
+                          ))}
+                        </Picker>
+                      </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={14}
+                          color="#666"
+                        />{" "}
+                        Select Date
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.dateButton}
+                        onPress={() => setShowDatePicker(true)}
+                      >
+                        <Ionicons name="calendar" size={20} color="#C62828" />
+                        <Text style={styles.dateButtonText}>
+                          {formatDate(selectedDate)}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {showDatePicker && (
+                        <DateTimePicker
+                          value={selectedDate}
+                          mode="date"
+                          display={
+                            Platform.OS === "ios" ? "spinner" : "default"
+                          }
+                          onChange={(event, date) => {
+                            setShowDatePicker(Platform.OS === "ios");
+                            if (date) setSelectedDate(date);
+                          }}
+                        />
+                      )}
+                    </View>
+
+                    <TouchableOpacity
                       style={[
-                        styles.messageText,
-                        message === "success"
-                          ? styles.messageSuccessText
-                          : styles.messageErrorText,
+                        styles.uploadButton,
+                        loading && styles.uploadButtonDisabled,
                       ]}
+                      onPress={uploadPDF}
+                      disabled={loading}
                     >
-                      {message === "success"
-                        ? `${uploadedFileName} uploaded successfully!`
-                        : message}
-                    </Text>
+                      {loading ? (
+                        <View style={styles.uploadingContainer}>
+                          <ActivityIndicator size="small" color="#fff" />
+                          <Text style={styles.uploadButtonText}>
+                            Uploading...
+                          </Text>
+                        </View>
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="cloud-upload"
+                            size={20}
+                            color="#fff"
+                          />
+                          <Text style={styles.uploadButtonText}>
+                            Upload PDF
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    {message && (
+                      <View
+                        style={[
+                          styles.messageContainer,
+                          message === "success"
+                            ? styles.messageSuccess
+                            : styles.messageError,
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            message === "success"
+                              ? "checkmark-circle"
+                              : "alert-circle"
+                          }
+                          size={20}
+                          color={message === "success" ? "#2e7d32" : "#d32f2f"}
+                        />
+                        <Text
+                          style={[
+                            styles.messageText,
+                            message === "success"
+                              ? styles.messageSuccessText
+                              : styles.messageErrorText,
+                          ]}
+                        >
+                          {message === "success"
+                            ? `${uploadedFileName} uploaded successfully!`
+                            : message}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
             )}
-          </View>
-        )}
 
-        {/* ✅ Skeleton or Content */}
-        {initialLoading ? (
-          <UploadSkeletonLoader />
-        ) : (
-          <>
-            <View style={styles.searchSection}>
-              <View style={styles.searchBar}>
-                <Ionicons name="search" size={20} color="#999" />
-                <TextInput
-                  placeholder="Search PDF by name..."
-                  placeholderTextColor="#999"
-                  value={search}
-                  onChangeText={setSearch}
-                  style={styles.searchInput}
-                />
-                {search.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearch("")}>
-                    <Ionicons name="close-circle" size={20} color="#999" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.filterSection}>
-              <Text style={styles.filterTitle}>
-                <Ionicons name="filter-outline" size={16} color="#333" /> Filter
-                by City
-              </Text>
-              <View style={styles.filterContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.filterChip,
-                    filterCity === "All" && styles.filterChipActive,
-                  ]}
-                  onPress={() => setFilterCity("All")}
-                >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      filterCity === "All" && styles.filterTextActive,
-                    ]}
-                  >
-                    All Cities
-                  </Text>
-                </TouchableOpacity>
-
-                {cities.map((city) => (
-                  <TouchableOpacity
-                    key={city}
-                    style={[
-                      styles.filterChip,
-                      filterCity === city && styles.filterChipActive,
-                    ]}
-                    onPress={() => setFilterCity(city)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterText,
-                        filterCity === city && styles.filterTextActive,
-                      ]}
-                    >
-                      {city}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.listSection}>
-              <Text style={styles.listTitle}>
-                <Ionicons name="document-text-outline" size={18} color="#333" />{" "}
-                Available E-Papers ({filteredList.length})
-              </Text>
-
-              <FlatList
-                data={filteredList}
-                keyExtractor={(item) => item.path}
-                renderItem={({ item }) => (
-                  <View style={styles.pdfCard}>
-                    <TouchableOpacity
-                      // onPress={() => setSelectedPdf(item.url)}
-                      onPress={() => {
-                        // console.log(
-                        //   "🧾 item.name =",
-                        //   item.name,
-                        //   "type =",
-                        //   typeof item.name
-                        // );
-                        router.push(`/upload/${encodeURIComponent(item.name)}` as any);
-                        console.log("🧾 Checking headers for:", item.url);
-
-                        
-                      }}
-                      style={styles.pdfCardContent}
-                    >
-                      <View style={styles.pdfIcon}>
-                        <Ionicons name="document" size={32} color="#C62828" />
-                      </View>
-
-                      <View style={styles.pdfInfo}>
-                        <Text style={styles.pdfName} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        <Text style={styles.pdfMeta}>
-                          <Ionicons name="location" size={12} color="#999" />{" "}
-                          {item.name.split("-")[0] || "Unknown"}
-                        </Text>
-                      </View>
-
-                      <Ionicons name="chevron-forward" size={20} color="#ccc" />
-                    </TouchableOpacity>
-
-                    {role === "admin" && (
-                      <TouchableOpacity
-                        onPress={() => deletePDF(item.path, item.name)}
-                        style={styles.deleteButton}
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={20}
-                          color="#d32f2f"
-                        />
+            {/* ✅ Skeleton or Content */}
+            {initialLoading ? (
+              <UploadSkeletonLoader />
+            ) : (
+              <>
+                <View style={styles.searchSection}>
+                  <View style={styles.searchBar}>
+                    <Ionicons name="search" size={20} color="#999" />
+                    <TextInput
+                      placeholder="Search PDF by name..."
+                      placeholderTextColor="#999"
+                      value={search}
+                      onChangeText={setSearch}
+                      style={styles.searchInput}
+                    />
+                    {search.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearch("")}>
+                        <Ionicons name="close-circle" size={20} color="#999" />
                       </TouchableOpacity>
                     )}
                   </View>
-                )}
-                ListEmptyComponent={() => (
-                  <View style={styles.emptyContainer}>
-                    <Ionicons
-                      name="folder-open-outline"
-                      size={64}
-                      color="#ccc"
-                    />
-                    <Text style={styles.emptyText}>No PDFs found</Text>
-                    <Text style={styles.emptySubtext}>
-                      {search
-                        ? "Try a different search term"
-                        : filterCity === "All"
-                        ? "Upload your first e-paper"
-                        : `No e-papers available for ${filterCity}`}
-                    </Text>
+                </View>
+
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterTitle}>
+                    <Ionicons name="filter-outline" size={16} color="#333" />{" "}
+                    Filter by City
+                  </Text>
+                  <View style={styles.filterContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.filterChip,
+                        filterCity === "All" && styles.filterChipActive,
+                      ]}
+                      onPress={() => setFilterCity("All")}
+                    >
+                      <Text
+                        style={[
+                          styles.filterText,
+                          filterCity === "All" && styles.filterTextActive,
+                        ]}
+                      >
+                        All Cities
+                      </Text>
+                    </TouchableOpacity>
+
+                    {cities.map((city) => (
+                      <TouchableOpacity
+                        key={city}
+                        style={[
+                          styles.filterChip,
+                          filterCity === city && styles.filterChipActive,
+                        ]}
+                        onPress={() => setFilterCity(city)}
+                      >
+                        <Text
+                          style={[
+                            styles.filterText,
+                            filterCity === city && styles.filterTextActive,
+                          ]}
+                        >
+                          {city}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                )}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                    colors={["#C62828"]}
-                    tintColor="#C62828"
-                  />
-                }
-              />
-            </View>
-          </>
-        )}
-      </View>
+                </View>
+
+                <View style={styles.listSection}>
+                  <Text style={styles.listTitle}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#333"
+                    />{" "}
+                    Available E-Papers ({filteredList.length})
+                  </Text>
+
+                  {/* PDF List */}
+                  {filteredList.map((item, index) => (
+                    <View
+                      key={item.path}
+                      ref={(ref: View | null) => {
+                        itemRefs.current[item.name] = ref;
+                      }}
+                      style={[
+                        styles.pdfCard,
+                        highlightedPdf === item.name &&
+                          styles.highlightedPdfCard,
+                      ]}
+                    >
+                      <TouchableOpacity
+                        onPress={() => {
+                          router.push(
+                            `/upload/${encodeURIComponent(item.name)}`
+                          );
+                        }}
+                        style={styles.pdfCardContent}
+                      >
+                        <View style={styles.pdfIcon}>
+                          <Ionicons name="document" size={32} color="#C62828" />
+                        </View>
+
+                        <View style={styles.pdfInfo}>
+                          <Text style={styles.pdfName}>{item.name}</Text>
+                          <Text style={styles.pdfMeta}>
+                            {item.name.split("-")[0] || "Unknown"}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {/* ✅ RIGHT SIDE DELETE BUTTON */}
+                      {role === "admin" && (
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => deletePDF(item.path, item.name)}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={22}
+                            color="#d32f2f"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -762,9 +806,7 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 12,
   },
-  listContent: {
-    flexGrow: 1,
-  },
+
   pdfCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -822,5 +864,10 @@ const styles = StyleSheet.create({
     color: "#ccc",
     marginTop: 8,
     textAlign: "center",
+  },
+  highlightedPdfCard: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#2E7D32",
+    borderWidth: 2,
   },
 });

@@ -1,27 +1,27 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { decode as decodeB64 } from "base64-arraybuffer";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Platform,
+  ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
-  StatusBar,
-  ActivityIndicator,
 } from "react-native";
-import * as FileSystem from "expo-file-system";
-import * as ImagePicker from "expo-image-picker";
-import * as DocumentPicker from "expo-document-picker";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Video from "react-native-video";
-import { decode as decodeB64 } from "base64-arraybuffer";
+
 import { supabase } from "../../lib/supabaseClient";
 import { NewsData } from "../../types/news";
-import Ionicons from "@expo/vector-icons/Ionicons"; // ✅ Add this import
-import { Share } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = {
   news: NewsData;
@@ -105,7 +105,7 @@ const NewsDetailView: React.FC<Props> = ({
       throw error;
     }
   };
-
+  
   const uploadFileToBucket = async (
     uri: string,
     path: string,
@@ -291,223 +291,257 @@ const NewsDetailView: React.FC<Props> = ({
       Alert.alert("Error", "Unable to share this news right now.");
     }
   };
+  //   const handleShare = async () => {
+  //   try {
+  //     const slug = slugify(news.title);
+  //     console.log(slug)
+
+  //     // FINAL CLEAN LINK
+  //     const deepLink = `pradesh-times://news/${news.id}/${slug}`;
+
+  //     await Share.share({
+  //       message: `📰 ${news.title}
+
+  // ${news.description}
+
+  // पूरी खबर यहाँ पढ़ें:
+  // ${deepLink}`,
+  //     });
+  //   } catch (error) {
+  //     Alert.alert("Error", "Unable to share this news right now.");
+  //   }
+  // };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-    <View style={styles.container}>
-      {/* ✅ Modern Header with Back Button */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-        <View style={{  alignItems: "center" }}>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-            <Ionicons name="share-social-outline" size={20} color="#fff" />
-            {/* <Text style={styles.shareButtonText}>Share News</Text> */}
+      <View style={styles.container}>
+        {/* ✅ Modern Header with Back Button */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
+          <View style={{ alignItems: "center" }}>
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+              <Ionicons name="share-social-outline" size={20} color="#fff" />
+              {/* <Text style={styles.shareButtonText}>Share News</Text> */}
+            </TouchableOpacity>
+          </View>
+
+          {editable && (
+            <View style={styles.editBadge}>
+              <Ionicons name="create-outline" size={16} color="#fff" />
+              <Text style={styles.editBadgeText}>Edit Mode</Text>
+            </View>
+          )}
         </View>
 
-        {editable && (
-          <View style={styles.editBadge}>
-            <Ionicons name="create-outline" size={16} color="#fff" />
-            <Text style={styles.editBadgeText}>Edit Mode</Text>
-          </View>
-        )}
-      </View>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {editable ? (
+            <>
+              {/* ✅ Status Message */}
+              {isWorking && (
+                <View style={styles.statusContainer}>
+                  <ActivityIndicator size="small" color="#C62828" />
+                  <Text style={styles.statusWorking}>
+                    {statusMsg ?? "Working..."}
+                  </Text>
+                </View>
+              )}
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {editable ? (
-          <>
-            {/* ✅ Status Message */}
-            {isWorking && (
-              <View style={styles.statusContainer}>
-                <ActivityIndicator size="small" color="#C62828" />
-                <Text style={styles.statusWorking}>
-                  {statusMsg ?? "Working..."}
+              {!isWorking && statusMsg && (
+                <View style={[styles.statusContainer, styles.statusSuccess]}>
+                  <Ionicons name="checkmark-circle" size={20} color="#2e7d32" />
+                  <Text style={styles.statusSuccessText}>{statusMsg}</Text>
+                </View>
+              )}
+
+              {/* ✅ Media Section */}
+              <View style={styles.mediaSection}>
+                <Text style={styles.sectionTitle}>Media</Text>
+
+                {/* Media Buttons */}
+                <View style={styles.mediaButtonsRow}>
+                  <TouchableOpacity
+                    onPress={selectImage}
+                    style={styles.mediaButton}
+                    disabled={isWorking}
+                  >
+                    <Ionicons name="image" size={24} color="#C62828" />
+                    <Text style={styles.mediaButtonText}>Choose Photo</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={selectVideo}
+                    style={styles.mediaButton}
+                    disabled={isWorking}
+                  >
+                    <Ionicons name="videocam" size={24} color="#C62828" />
+                    <Text style={styles.mediaButtonText}>Choose Video</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Media Preview */}
+                {(previewImage || previewVideo) && (
+                  <View style={styles.mediaPreviewContainer}>
+                    {previewImage && (
+                      <Image
+                        source={previewImage}
+                        style={styles.mediaPreview}
+                        resizeMode="cover"
+                      />
+                    )}
+
+                    {!previewImage && previewVideo && (
+                      <View style={styles.videoPreviewWrapper}>
+                        <Video
+                          source={{ uri: previewVideo }}
+                          style={styles.mediaPreview}
+                          controls
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )}
+
+                    {/* Remove Media Button */}
+                    {(pendingImage || pendingVideo) && (
+                      <TouchableOpacity
+                        style={styles.removeMediaButton}
+                        onPress={removeMedia}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={28}
+                          color="#ff4444"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* ✅ Title Input */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="newspaper-outline" size={16} color="#666" />{" "}
+                  Title
                 </Text>
+                <TextInput
+                  style={styles.titleInput}
+                  value={localTitle}
+                  onChangeText={setLocalTitle}
+                  placeholder="Enter news title"
+                  placeholderTextColor="#999"
+                />
               </View>
-            )}
 
-            {!isWorking && statusMsg && (
-              <View style={[styles.statusContainer, styles.statusSuccess]}>
-                <Ionicons name="checkmark-circle" size={20} color="#2e7d32" />
-                <Text style={styles.statusSuccessText}>{statusMsg}</Text>
+              {/* ✅ Description Input */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={16}
+                    color="#666"
+                  />{" "}
+                  Description
+                </Text>
+                <TextInput
+                  style={styles.descInput}
+                  value={localDesc}
+                  onChangeText={setLocalDesc}
+                  placeholder="Enter news description"
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={6}
+                />
               </View>
-            )}
 
-            {/* ✅ Media Section */}
-            <View style={styles.mediaSection}>
-              <Text style={styles.sectionTitle}>Media</Text>
-
-              {/* Media Buttons */}
-              <View style={styles.mediaButtonsRow}>
+              {/* ✅ Action Buttons */}
+              <View style={styles.actionButtons}>
                 <TouchableOpacity
-                  onPress={selectImage}
-                  style={styles.mediaButton}
+                  style={[
+                    styles.saveButton,
+                    isWorking && styles.buttonDisabled,
+                  ]}
+                  onPress={handleSave}
                   disabled={isWorking}
                 >
-                  <Ionicons name="image" size={24} color="#C62828" />
-                  <Text style={styles.mediaButtonText}>Choose Photo</Text>
+                  {isWorking ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={20}
+                        color="#fff"
+                      />
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={selectVideo}
-                  style={styles.mediaButton}
+                  style={styles.cancelButton}
+                  onPress={handleCancel}
                   disabled={isWorking}
                 >
-                  <Ionicons name="videocam" size={24} color="#C62828" />
-                  <Text style={styles.mediaButtonText}>Choose Video</Text>
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={20}
+                    color="#666"
+                  />
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Media Preview */}
-              {(previewImage || previewVideo) && (
-                <View style={styles.mediaPreviewContainer}>
-                  {previewImage && (
+            </>
+          ) : (
+            <>
+              {/* ✅ View Mode - Display Only */}
+              {(serverImageUrl || serverVideoUrl) && (
+                <View style={styles.mediaViewContainer}>
+                  {serverImageUrl && (
                     <Image
-                      source={previewImage}
-                      style={styles.mediaPreview}
+                      source={{ uri: serverImageUrl }}
+                      style={styles.mediaView}
                       resizeMode="cover"
                     />
                   )}
-
-                  {!previewImage && previewVideo && (
-                    <View style={styles.videoPreviewWrapper}>
-                      <Video
-                        source={{ uri: previewVideo }}
-                        style={styles.mediaPreview}
-                        controls
-                        resizeMode="contain"
-                      />
-                    </View>
-                  )}
-
-                  {/* Remove Media Button */}
-                  {(pendingImage || pendingVideo) && (
-                    <TouchableOpacity
-                      style={styles.removeMediaButton}
-                      onPress={removeMedia}
-                    >
-                      <Ionicons name="close-circle" size={28} color="#ff4444" />
-                    </TouchableOpacity>
+                  {serverVideoUrl && (
+                    <Video
+                      source={{ uri: serverVideoUrl }}
+                      style={styles.mediaView}
+                      controls
+                      resizeMode="contain"
+                    />
                   )}
                 </View>
               )}
-            </View>
 
-            {/* ✅ Title Input */}
-            <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>
-                <Ionicons name="newspaper-outline" size={16} color="#666" />{" "}
-                Title
-              </Text>
-              <TextInput
-                style={styles.titleInput}
-                value={localTitle}
-                onChangeText={setLocalTitle}
-                placeholder="Enter news title"
-                placeholderTextColor="#999"
-              />
-            </View>
+              <View style={styles.contentView}>
+                <Text style={styles.categoryBadge}>{news.category}</Text>
+                <Text style={styles.titleView}>{news.title}</Text>
+                <Text style={styles.descriptionView}>{news.description}</Text>
 
-            {/* ✅ Description Input */}
-            <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>
-                <Ionicons name="document-text-outline" size={16} color="#666" />{" "}
-                Description
-              </Text>
-              <TextInput
-                style={styles.descInput}
-                value={localDesc}
-                onChangeText={setLocalDesc}
-                placeholder="Enter news description"
-                placeholderTextColor="#999"
-                multiline
-                numberOfLines={6}
-              />
-            </View>
-
-            {/* ✅ Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.saveButton, isWorking && styles.buttonDisabled]}
-                onPress={handleSave}
-                disabled={isWorking}
-              >
-                {isWorking ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons
-                      name="checkmark-circle-outline"
-                      size={20}
-                      color="#fff"
-                    />
-                    <Text style={styles.saveButtonText}>Save Changes</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={handleCancel}
-                disabled={isWorking}
-              >
-                <Ionicons name="close-circle-outline" size={20} color="#666" />
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          <>
-            {/* ✅ View Mode - Display Only */}
-            {(serverImageUrl || serverVideoUrl) && (
-              <View style={styles.mediaViewContainer}>
-                {serverImageUrl && (
-                  <Image
-                    source={{ uri: serverImageUrl }}
-                    style={styles.mediaView}
-                    resizeMode="cover"
-                  />
-                )}
-                {serverVideoUrl && (
-                  <Video
-                    source={{ uri: serverVideoUrl }}
-                    style={styles.mediaView}
-                    controls
-                    resizeMode="contain"
-                  />
-                )}
+                <View style={styles.metaInfo}>
+                  <Ionicons name="time-outline" size={16} color="#999" />
+                  <Text style={styles.dateText}>
+                    {new Date(news.created_at).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </Text>
+                </View>
               </View>
-            )}
-
-            <View style={styles.contentView}>
-              <Text style={styles.categoryBadge}>{news.category}</Text>
-              <Text style={styles.titleView}>{news.title}</Text>
-              <Text style={styles.descriptionView}>{news.description}</Text>
-
-              <View style={styles.metaInfo}>
-                <Ionicons name="time-outline" size={16} color="#999" />
-                <Text style={styles.dateText}>
-                  {new Date(news.created_at).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </Text>
-              </View>
-            </View>
-          </>
-        )}
-      </ScrollView>
-    
-    </View>
-</SafeAreaView>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -523,7 +557,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#C62828",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    
   },
   backButton: {
     flexDirection: "row",

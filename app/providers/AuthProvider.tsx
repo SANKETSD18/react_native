@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import { router } from "expo-router";
 import {
@@ -8,7 +9,6 @@ import {
   useState,
 } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type AuthContextType = {
   user: User | null;
@@ -81,7 +81,6 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (recovery === "true") {
           console.log("⛔ Recovery mode → redirect skipped");
-          
 
           setSession(currentSession);
           setUser(currentSession.user);
@@ -91,6 +90,8 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
         // NORMAL LOGIN FLOW
         setSession(currentSession);
         setUser(currentSession.user);
+        const r = await fetchRole(currentSession.user.email || "");
+        setRole(r);
         router.replace("/(tabs)");
       }
 
